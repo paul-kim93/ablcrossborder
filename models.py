@@ -8,6 +8,8 @@ class Seller(Base):
     name = Column(String(100), nullable=False)
     contact = Column(String(50), nullable=False)
 
+    products = relationship("Product", back_populates="seller")
+
 class Product(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True, index=True)
@@ -19,3 +21,5 @@ class Product(Base):
     current_stock = Column(Integer, nullable=False)
     thumbnail_url = Column(String(255))
     detail_image_url = Column(String(255))
+
+    seller = relationship("Seller", back_populates="products")
