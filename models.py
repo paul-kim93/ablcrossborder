@@ -23,3 +23,11 @@ class Product(Base):
     detail_image_url = Column(String(255))
 
     seller = relationship("Seller", back_populates="products")
+
+class Account(Base):
+    __tablename__ = "accounts"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    type = Column(String(20), nullable=False)  # "admin" 또는 "seller"
+    seller_id = Column(Integer, ForeignKey("sellers.id"), nullable=True)
