@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>입점사 관리자 대시보드</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/imagekit-javascript/dist/imagekit.min.js"></script>
+  
+
+  <style>
+    /* 오른쪽 대시보드 전체 너비 채우기 보정 */
+    main {
+      flex: 1;
+      padding: 20px;
+      background-color: #f1f2f6;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* 제품관리 하위 메뉴 숨김 */
+    .submenu {
+      display: none;
+      padding-left: 15px;
+    }
+    .submenu.show {
+      display: block;
+    }
+    nav li {
+      cursor: pointer;
+    }
+    
+    /* 활성 메뉴 하이라이트 */
+    .nav-menu.active {
+      background-color: rgba(255, 255, 255, 0.1);
+      padding-left: 10px;
+      border-left: 3px solid #fff;
+    }
+
+    /* (공용) 모달 프레임 — 팝업처럼 보이게 큰 사이즈 */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:none}
+    .modal{background:#fff;border-radius:12px;max-width:780px;width:90%;max-height:80vh;overflow:auto;
+           margin:0 auto;position:relative;top:50%;transform:translateY(-50%);box-shadow:0 10px 30px rgba(0,0,0,.15)}
+    .modal-header,.modal-footer{display:flex;justify-content:space-between;align-items:center;padding:12px 16px}
+    .modal-body{padding:16px}
+    .icon-btn{background:transparent;border:0;cursor:pointer;font-size:18px}
+    
+
+
+    .modal.seller-dashboard-modal {
+    max-width: 90vw !important;
+    width: 90vw !important;
+}
+
+
+    /* 네비 하단 업로드 버튼 영역 */
+    .nav-upload-wrap{margin-top:auto;padding:12px 0}
+    .upload-btn{width:100%;padding:10px;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer}
+    .upload-hint{font-size:12px;color:#64748b;margin-top:6px}
+    nav {display:flex; flex-direction:column;}
+    
+    /* 로그아웃 버튼 스타일 */
+    .logout-btn {
+      width: 100%;
+      padding: 10px;
+      border: 0;
+      border-radius: 8px;
+      background: #5471f1;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .logout-btn:hover {
+      background: #89b5f7;
+    }
+    
+    /* 제품 테이블 이미지 스타일 */
+    .product-table img {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    
+    .product-table img:hover {
+      transform: scale(1.1);
+      transition: transform 0.2s;
+    }
+    
+    /* 인라인 편집 입력 필드 */
+    .product-table input[type="text"],
+    .product-table input[type="number"] {
+      padding: 4px;
+      border: 1px solid #007bff;
+      border-radius: 3px;
+      font-size: 13px;
+    }
+    
+    /* 비활성 제품 스타일 */
+    .product-table tr[data-product-id] {
+      transition: opacity 0.3s;
+    }
+    
+    /* 작업 버튼들 스타일 */
+    .product-table td button {
+      padding: 4px 8px;
+      margin: 2px;
+      font-size: 11px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    
+    .product-table td button:hover {
+      opacity: 0.8;
+    }
+    
+    /* 제품 등록 버튼 */
+    button[onclick*="openCreateProductModal"] {
+      font-weight: 600;
+    }
+    
+    button[onclick*="openCreateProductModal"]:hover {
+      background: #218838 !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- 전체 레이아웃 컨테이너 -->
+  <div class="container">
+
+    <!-- 좌측 네비게이션 바 -->
+    <nav>
+      <h2>관리자 메뉴</h2>
+       <!-- 계정 정보 표시 영역 추가 -->
+    <div id="userInfoBox" style="
+        margin: 15px 10px 25px 10px;
+        padding: 12px 15px;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        border-radius: 8px;
+        border-left: 4px solid #4a90e2;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    ">
+        <div style="
+            font-size: 11px;
+            color: #a8c0e8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        ">계정 정보</div>
+        <div id="userDisplayName" style="
+            font-weight: 600;
+            color: #ffffff;
+            font-size: 15px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        ">
+            <span style="opacity: 0.5;">로딩중...</span>
+        </div>
+    </div>
+      <ul>
+        <li id="menu-overview" class="nav-menu">판매현황</li>
+        <li id="menu-product-toggle" class="nav-menu">제품관리</li>
+        <ul id="product-submenu" class="submenu">
+          <li id="menu-products" class="nav-menu">- 판매중인 제품</li>
+          <li id="menu-orders" class="nav-menu">- 주문서 요약</li>
+        </ul>
+        <li id="menu-sellers" class="nav-menu">입점사별 판매현황</li>
+        <li id="menu-account" class="nav-menu">계정관리</li>
+        <li id="menu-settings" class="nav-menu">설정</li>
+      </ul>
+
+
+ <!-- 네비 하단 버튼 영역 (절대 위치) -->
+<div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 20px;">
+    <!-- 주문서 업로드 -->
+    <button id="uploadExcelBtn" 
+        onclick="document.getElementById('fileInputOrders').click()"
+        style="width: 100%; margin-bottom: 8px; display: none;">
+        🗂 주문서 업로드
+    </button>
+    <input id="fileInputOrders" type="file" accept=".xlsx,.xls,.csv" style="display:none;">
+    <div id="uploadHint" class="upload-hint" 
+     style="font-size: 11px; color: #94a3b8; text-align: center; margin-bottom: 15px; display: none;">
+    엑셀(.xlsx, .xls) 또는 CSV 업로드
+</div>
+    
+    <!-- 로그아웃 버튼 -->
+    <button onclick="window.API.logout()" class="logout-btn" style="width: 100%;">
+         로그아웃
+    </button>
+</div>
+      
+      
+    </nav>
+
+    <!-- 메인 콘텐츠 -->
+    <main>
+      <!-- 요약 섹션 -->
+      <div id="summarySection" class="dashboard-section">
+        <div class="section-title">요약</div>
+        <div class="summary-boxes">
+                  <div class="summary-box">
+            <div style="font-weight: 600; margin-bottom: 10px;">누적</div>
+            <div id="totalRevenue">-</div>
+            <div id="totalSales">-</div>
+          </div>
+          <div class="summary-box">
+            <div style="font-weight: 600; margin-bottom: 10px;">이번달</div>
+            <div id="monthRevenue">-</div>
+            <div id="monthSales">-</div>
+          </div>
+          <div class="summary-box">
+            <div style="font-weight: 600; margin-bottom: 10px;">이번주</div>
+            <div id="weekRevenue">-</div>
+            <div id="weekSales">-</div>
+          </div>
+          <div class="summary-box">
+            <div style="font-weight: 600; margin-bottom: 10px;">전일</div>
+            <div id="todayRevenue">-</div>
+            <div id="todaySales">-</div>
+          </div>
+        </div>
+      </div>
+        <!-- 업로드 진행 오버레이 -->
+<!-- 업로드 진행 오버레이 (3단계) -->
+<div id="uploadOverlay" style="display: none;">
+    <div class="upload-modal">
+        <div class="upload-icon">📊</div>
+        <h3>엑셀 파일 처리 중...</h3>
+        
+        <!-- 3단계 프로그레스 -->
+        <div class="multi-progress">
+            <!-- 단계 1: 파일 업로드 -->
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span class="step-icon" id="step1Icon">⏳</span>
+                    <span>파일 업로드</span>
+                    <span class="progress-percent" id="upload-percent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="uploadProgress" class="progress-fill"></div>
+                </div>
+            </div>
+            
+            <!-- 단계 2: 데이터 파싱 -->
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span class="step-icon" id="step2Icon">⏳</span>
+                    <span>데이터 파싱</span>
+                    <span class="progress-percent" id="parse-percent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="parseProgress" class="progress-fill"></div>
+                </div>
+            </div>
+            
+            <!-- 단계 3: 통계 계산 -->
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span class="step-icon" id="step3Icon">⏳</span>
+                    <span>통계 계산</span>
+                    <span class="progress-percent" id="stats-percent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="statsProgress" class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="uploadStatus" class="upload-status">준비 중...</div>
+        <div id="uploadDetails" class="upload-details"></div>
+    </div>
+</div>
+
+<!-- 요약 섹션 다음에 추가 -->
+<div id="lastMonthSection" class="dashboard-section" style="margin-top: 20px; display: none;">
+  <div class="section-title">
+    <span id="lastMonthTitle">전월 실적</span>
+  </div>
+  
+  <div style="display: flex; gap: 20px; padding: 20px; background: white; border-radius: 8px;">
+    <!-- 왼쪽: 핵심 지표 (그대로) -->
+    <div style="flex: 0 0 200px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+      <h4 style="margin-bottom: 20px;">핵심 지표</h4>
+      <div class="metric-grid">
+        <div class="metric-item admin-only">
+          <span class="metric-label">매출원가</span>
+          <span class="metric-value" id="lastMonthSupply">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label" id="revenueLabel">매출액</span>
+          <span class="metric-value" id="lastMonthRevenue">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">판매량</span>
+          <span class="metric-value" id="lastMonthQuantity">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">주문건수</span>
+          <span class="metric-value" id="lastMonthOrders">-</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 중앙: 원형 차트 (크게, 오른쪽으로) -->
+    <div style="flex: 0 0 400px; text-align: center; margin-left: 30px;">
+      <h4 style="margin-bottom: 15px;">제품별 매출 비중</h4>
+      <canvas id="lastMonthPieChart" width="350" height="350"></canvas>
+    </div>
+    
+    <!-- 오른쪽: 제품 목록 -->
+    <div style="flex: 1; padding: 0 20px;">
+  <h4 style="margin-bottom: 15px;">상위 제품</h4>
+  <div id="lastMonthLegend" style="
+    height: 280px;  /* 3.5개 항목이 보이는 높이 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 10px;
+  ">
+        <!-- 범례가 여기 표시됨 -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.metric-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.metric-item {
+  padding: 10px;
+  background: white;
+  border-radius: 6px;
+  border-left: 3px solid #007bff;
+}
+
+.metric-label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.metric-value {
+  display: block;
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+</style>
+
+      <!-- 필터 버튼 영역 -->
+      <div class="filter-tabs" id="filterTabs" style="display: none;">
+        <button class="filter-btn active" onclick="setChartView('monthly', event)">월별</button>
+        <button class="filter-btn" onclick="setChartView('daily', event)">일별</button>
+        <button class="filter-btn" onclick="setChartView('range', event)">특정기간</button>
+        <span id="dateRangeText">기간 선택:</span>
+        <input type="date" id="startDate">
+        <input type="date" id="endDate">
+        <button id="applyRange" onclick="applyRangeChart()">적용</button>
+
+        <!-- 제품 필터 + 선택 태그 + 초기화 -->
+        <div class="product-filter-section">
+          <button id="productFilterBtn" class="filter-btn">제품 필터</button>
+          <button id="resetFilterBtn" class="filter-btn reset-btn">필터 초기화</button>
+          <div id="selectedProducts" class="selected-products"></div>
+        </div>
+      </div>
+
+      <div class="dashboard-section">
+        <div class="section-title">입점사 매출 현황</div>
+        <canvas id="revenueChart"></canvas>
+      </div>
+
+      <div class="dashboard-section">
+        <div class="section-title">입점사 판매량 현황</div>
+        <canvas id="salesChart"></canvas>
+      </div>
+
+       <!-- TOP5 랭킹 섹션 (판매현황에서만 표시) -->
+      <div id="rankingsSection" class="dashboard-section" style="display: none;">
+        <div class="section-title">TOP 5 랭킹</div>
+        
+        <!-- 매출 TOP5 -->
+        <div style="margin-bottom: 30px;">
+          <h4>매출 TOP 5</h4>
+          <div style="display: flex; gap: 15px;">
+            <div class="ranking-card">
+              <div class="ranking-title">누적</div>
+              <div id="revenueCumulative"></div>
+            </div>
+            <div class="ranking-card">
+              <div class="ranking-title">2025년</div>
+              <div id="revenueYear"></div>
+            </div>
+            <div class="ranking-card">
+              <div class="ranking-title">이번달</div>
+              <div id="revenueMonth"></div>
+            </div>
+            <div class="ranking-card">
+              <div class="ranking-title">이번주</div>
+              <div id="revenueWeek"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 판매량 TOP5 -->
+        <div>
+          <h4>판매량 TOP 5</h4>
+          <div style="display: flex; gap: 15px;">
+            <div class="ranking-card">
+              <div class="ranking-title">누적</div>
+              <div id="quantityCumulative"></div>
+            </div>
+            <div class="ranking-card">
+              <div class="ranking-title"><span id="currentYear"></span>년</div>
+              <div id="quantityYear"></div>
+            </div>
+            <div class="ranking-card">
+              <div class="ranking-title">이번달</div>
+              <div id="quantityMonth"></div>
+            </div>
+            <div class="ranking-card">
+              <div class="ranking-title">이번주</div>
+              <div id="quantityWeek"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+<!-- 나머지도 동일하게 id 추가 -->
+
+      <!-- 입점사 리스트 섹션 -->
+      <div id="sellerListSection" class="dashboard-section" style="display: none;">
+        <div class="section-title">입점사 리스트</div>
+
+        <!-- 검색창 -->
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <input type="text" id="searchBox" placeholder="입점사 이름 검색" style="width: 250px; padding: 6px;">
+          <button onclick="searchSeller()">검색</button>
+        </div>
+
+        <!-- 입점사 생성/삭제 버튼 -->
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 10px;">
+          <button onclick="openAddSellerModal()">입점사 생성</button>
+          <button onclick="deleteSelectedSellers()">선택 삭제</button>
+        </div>
+
+        <!-- 표 형태 리스트 -->
+        <table class="product-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" onclick="toggleAllSellers(this)"></th>
+              <th>입점사명</th>
+              <th>등록 제품 수</th>
+              <th>판매중인 제품</th>
+              <th>누적 판매액</th>
+              <th>누적 판매 수량</th>
+              <th>판매현황 보기</th>
+              <th>수정</th>
+            </tr>
+          </thead>
+          <tbody id="sellerListTableBody">
+            <!-- JavaScript로 동적으로 생성됨 -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 📦 판매중인 제품 리스트 섹션 -->
+      <div id="productListSection" class="dashboard-section" style="display: none;">
+        <div class="section-title">판매중인 제품</div>
+
+        <!-- 🔍 검색창 -->
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <input type="text" id="productSearchInput" 
+                 placeholder="제품명 또는 제품코드 검색" 
+                 style="width: 250px; padding: 6px;">
+          <button id="productSearchBtn">검색</button>
+        </div>
+
+        <!-- 관리자용 입점사 필터 버튼 추가 -->
+        <button id="sellerFilterBtnForList" onclick="openSellerFilterModalForList()" 
+                style="padding: 8px 15px; background: #17a2b8; color: white; 
+                       border: none; border-radius: 4px; display: none;">
+            입점사 필터
+        </button>
+
+        <!-- ➕ 제품 생성/삭제 버튼 -->
+<!-- ➕ 제품 생성/삭제 버튼 -->
+<div style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 10px;">
+    
+    <button id="createProductBtn" 
+            onclick="openCreateProductModal()" 
+            style="padding: 8px 15px; background: #28a745; color: white; 
+                   border: none; border-radius: 4px; cursor: pointer;">
+        제품 등록
+    </button>
+    <button id="deleteSelectedBtn"
+            onclick="deleteSelectedProducts()" 
+            style="padding: 8px 15px; background: #dc3545; color: white; 
+                   border: none; border-radius: 4px; cursor: pointer;">
+        선택 삭제
+    </button>
+</div>
+
+        <!-- 📋 제품 리스트 테이블 -->
+        <table class="product-table">
+          <thead>
+            <tr>
+              <th style="width: 40px;">
+              <input type="checkbox" onclick="toggleAllProducts(this)">
+              <th style="width: 60px;">이미지</th>
+              <th>제품명</th>
+              <th>제품코드</th>
+              <th>공급사</th>
+              <th class="admin-only">재고수량</th>
+              <th>현재수량</th>
+              <th>공급가</th>
+              <th class="admin-only">판매가</th>
+              <th style="width: 80px;">상세보기</th>
+              <th style="width: 80px;">판매기록</th>
+              <th style="width: 140px;">작업</th>
+            </tr>
+          </thead>
+          <tbody id="productListTableBody">
+            <!-- JS로 동적 생성 -->
+          </tbody>
+        </table>
+        
+        <!-- 페이지네이션 버튼 표시 영역 -->
+        <div id="pagination" style="text-align: center; margin-top: 15px;"></div>
+      </div>
+
+      <!-- 주문서 요약 섹션 -->
+      <div id="orderSummarySection" class="dashboard-section" style="display: none;">
+        <div class="section-title">주문서 요약</div>
+
+
+    <!-- 검색 및 필터 영역 추가 -->
+<div style="margin: 15px 0;">
+    <!-- 1줄: 검색바, 검색버튼 / 날짜 필터 / 제품선택 / 입점사선택 -->
+    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+        <!-- 검색 영역 -->
+        <input type="text" id="orderSearchInput" 
+               placeholder="주문번호, 구매자ID, 제품명 검색" 
+               style="width: 300px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+               onkeyup="if(event.key==='Enter') searchOrders()">
+        <button onclick="searchOrders()" 
+                style="padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px;">
+            검색
+        </button>
+        
+        <div style="width: 1px; height: 24px; background: #ddd; margin: 0 10px;"></div> <!-- 구분선 -->
+        
+        <!-- 날짜 필터 -->
+        <span style="font-weight: 600;">날짜:</span>
+        <input type="date" id="orderStartDate" onchange="filterOrders()"
+               style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+        <span>~</span>
+        <input type="date" id="orderEndDate" onchange="filterOrders()"
+               style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+        
+        <div style="width: 1px; height: 24px; background: #ddd; margin: 0 10px;"></div> <!-- 구분선 -->
+        
+        <!-- 제품 선택 버튼 -->
+        <button onclick="openOrderProductFilterModal()" 
+                style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px;">
+            제품 선택
+        </button>
+        
+        <!-- 입점사 선택 (관리자만) -->
+        <button onclick="openSellerFilterModal()" 
+        style="padding: 8px 15px; background: #6c757d; color: white; border: none; border-radius: 4px; display: none;"
+        class="admin-only" id="sellerFilterBtn">
+          입점사 선택
+      </button>
+      <span id="selectedSellerName" style="margin-left: 10px; font-weight: 600;"></span>
+    </div>
+    
+    <!-- 2줄: 상태필터 / 필터 초기화 -->
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <!-- 상태 필터 -->
+        <span style="font-weight: 600;">상태:</span>
+        <select id="orderStatusFilter" onchange="filterOrders()" 
+                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; min-width: 120px;">
+            <option value="">전체 상태</option>
+            <option value="발송대기">발송대기</option>
+            <option value="배송중">배송중</option>
+            <option value="통관중">통관중</option>
+            <option value="배송완료">배송완료</option>
+            <option value="주문취소">주문취소</option>
+            <option value="환불/교환">환불/교환</option>
+        </select>
+        
+        <div style="width: 1px; height: 24px; background: #ddd; margin: 0 10px;"></div> <!-- 구분선 -->
+        
+        <!-- 필터 초기화 -->
+        <button onclick="resetOrderFilters()" 
+                style="padding: 8px 15px; background: #6c757d; color: white; border: none; border-radius: 4px;">
+            필터 초기화
+        </button>
+        
+        <!-- 선택된 제품 태그 표시 영역 -->
+        <div id="selectedOrderProducts" style="margin-left: 20px; display: inline-flex; gap: 5px; flex-wrap: wrap;">
+            <!-- 선택된 제품 태그가 여기 표시됨 -->
+        </div>
+    </div>
+    
+    
+</div>
+    
+    <table class="product-table">
+    <thead>
+      <tr>
+        <th style="width: 40px;">번호</th> 
+        <th style="width: 100px;">주문번호</th>
+        <th style="width: 250px;">제품명</th>
+        <th style="width: 40px;">수량</th>
+        <th style="width: 80px;">총액</th>
+        <th class="admin-only" style="width: 80px;">총액(판매가)</th>
+        <th style="width: 80px;">구매자</th>
+        <th style="width: 100px;">날짜</th>
+        <th style="width: 80px;">상태</th>
+        <th style="width: 60px;">작업</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+      </div>
+
+      <!-- 계정관리 섹션 -->
+      <div id="accountManagementSection" class="dashboard-section" style="display: none;">
+        <div class="section-title">계정관리</div>
+
+        <!-- 검색창 -->
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <input type="text" id="accountSearchInput" 
+                 placeholder="아이디 또는 입점사명 검색" 
+                 style="width: 250px; padding: 6px;">
+          <button onclick="searchAccounts()">검색</button>
+        </div>
+
+        <!-- 계정생성/삭제 버튼 -->
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 10px;">
+          <button onclick="openCreateAccountModal()">계정 생성</button>
+          <button onclick="deleteSelectedAccounts()">계정 삭제</button>
+        </div>
+
+        <!-- 계정 테이블 -->
+        <table class="product-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" onclick="toggleAllCheckboxes(this)"></th>
+              <th>아이디</th>
+              <th>입점사명</th>
+              <th>계정유형</th>
+              <th>계정 생성일자</th>
+              <th>설정</th>
+            </tr>
+          </thead>
+          <tbody id="accountTableBody">
+            <!-- JS로 동적 렌더링 -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 제품선택 모달 (차트 필터용) -->
+      <div id="productModal" class="modal-backdrop" style="display:none;">
+        <div class="modal">
+          <div class="modal-header">
+            <span>제품 선택</span>
+            <button id="closeProductModal" class="icon-btn" aria-label="close">✕</button>
+          </div>
+
+          <div class="modal-body">
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+              <input type="text" id="productSearchInputModal" 
+                     placeholder="제품명/코드 검색" 
+                     style="flex:1; padding:8px;">
+              <button id="productSearchBtnModal" class="filter-btn">검색</button>
+            </div>
+
+            <div id="productListModal" class="product-list-modal">
+              <!-- JS로 체크박스 리스트 렌더 -->
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button id="confirmProductSelection" class="filter-btn">확인</button>
+            <button id="cancelProductSelection" class="filter-btn">취소</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 공급사 선택 모달 (구버전 - 호환성 유지) -->
+      <div id="supplierModal" class="modal-backdrop" style="display:none;">
+        <div class="modal">
+          <div class="modal-header">
+            <span>공급사 선택</span>
+            <button id="closeSupplierModal" class="icon-btn" aria-label="close">✕</button>
+          </div>
+          <div class="modal-body">
+            <div id="supplierListBox" style="max-height:50vh; overflow:auto;"></div>
+          </div>
+          <div class="modal-footer">
+            <button id="confirmSupplier" class="filter-btn">확인</button>
+            <button id="cancelSupplier" class="filter-btn">취소</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 공용 모달 (모든 동적 폼용) -->
+      <div id="modalRoot" class="modal-backdrop" style="display:none;">
+        <div class="modal">
+          <div class="modal-header">
+            <span id="modalTitle">제목</span>
+            <button class="icon-btn" aria-label="close" onclick="closeModal()">✕</button>
+          </div>
+          <div id="modalBody" class="modal-body"><!-- 동적 컨텐츠 주입 --></div>
+          <div id="modalFooter" class="modal-footer"><!-- 동적 버튼 주입 --></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+
+<!-- 외부 스크립트 로딩 - api.js를 먼저 로드 -->
+<script src="/static/api.js?v=1"></script>
+<script src="/static/chart.js?v=2"></script>
+<script src="/static/nav.js?v=1"></script>
+<script src="productList.js?v=2"></script>
+<script src="/static/sellerList.js?v=1"></script>
+<script src="/static/accountManager.js?v=20250811"></script>
+<!--<script src="productFilter.js?v=1"></script>-->
+<script src="/static/orderSummary.js?v=1"></script>
+</body>
+
+</html>

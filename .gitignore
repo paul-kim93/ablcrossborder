@@ -1,0 +1,51 @@
+# 환경 변수 (절대 중요!)
+.env
+.env.local
+.env.production
+.env.*
+
+# Python
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# 데이터베이스
+*.db
+*.sqlite
+*.sqlite3
+
+# 업로드된 파일들
+uploads/
+static/uploads/
+*.jpg
+*.png
+*.gif
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# 로그
+*.log
+logs/
+
+# 백업 파일
+*.bak
+*.backup
+*.tmp
+
+# 패키지 관련
+dist/
+build/
+*.egg-info/

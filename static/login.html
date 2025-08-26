@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 로그인</title>
+  <link rel="stylesheet" href="loginstyle.css">
+  <script src="api.js"></script>
+</head>
+<body>
+<div class="login-wrapper">
+  <!-- 왼쪽 이미지 영역 -->
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            padding: 60px 40px; 
+            border-radius: 12px 0 0 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;">
+    <h1 style="color: white; 
+               font-size: 48px; 
+               margin: 0; 
+               font-weight: 300;
+               letter-spacing: -1px;">
+        Commerce Hub
+    </h1>
+    <p style="color: rgba(255, 255, 255, 0.85); 
+              font-size: 22px; 
+              margin-top: 10px;
+              font-weight: 200;
+              letter-spacing: 3px;
+              text-transform: uppercase;">
+        Cross-border
+    </p>
+</div>
+
+  <!-- 오른쪽 로그인 폼 영역 -->
+  <div class="login-box">
+    <h2>관리자 로그인</h2>
+    <form id="loginForm">
+      <label for="username">아이디</label>
+      <input type="text" id="username" name="username" autocomplete="username" required>
+
+      <label for="password">비밀번호</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+      <button type="submit" class="login-btn">로그인</button>
+    </form>
+    <p id="errorMsg" class="error-message" style="color: red; text-align: center; margin-top: 10px;"></p>
+    
+    <!-- 개발 환경 힌트 -->
+    
+
+<script>
+// 개발 환경에서 힌트 표시
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  const devHint = document.getElementById('devHint');
+  if (devHint) devHint.style.display = 'block';
+}
+
+// 이미 로그인되어 있으면 메인 페이지로 이동
+if (window.API && window.API.isLoggedIn()) {
+  window.location.href = 'index.html';
+}
+
+document.getElementById("loginForm").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const errEl = document.getElementById("errorMsg");
+  errEl.textContent = "";
+
+  if (!username || !password) {
+    errEl.textContent = "아이디와 비밀번호를 입력하세요.";
+    return;
+  }
+
+  // 로딩 표시
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = "로그인 중...";
+  submitBtn.disabled = true;
+
+  try {
+    const success = await window.API.login(username, password);
+    
+    if (success) {
+      // 로그인 성공 - 메인 페이지로 이동
+      window.location.href = 'index.html';
+    } else {
+      throw new Error("로그인에 실패했습니다.");
+    }
+  } catch (err) {
+    errEl.textContent = err.message || "아이디 또는 비밀번호가 잘못되었습니다.";
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+  }
+});
+</script>
+<link rel="stylesheet" href="/static/loginstyle.css">
+<script src="/static/api.js"></script>
+</body>
+</html>
