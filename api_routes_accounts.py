@@ -11,7 +11,7 @@ from schemas import AccountCreate, AccountUpdate, AccountOut
 router = APIRouter()
 
 # === Accounts CRUD ===
-router.post("/accounts", response_model=AccountOut)
+@router.post("/accounts", response_model=AccountOut)
 def create_account(body: AccountCreate, db: Session = Depends(get_db), current: Account = Depends(admin_only)):
     if db.query(Account).filter(Account.username == body.username).first():
         raise HTTPException(status_code=400, detail="이미 존재하는 아이디")

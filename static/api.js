@@ -201,7 +201,7 @@ window.accountsAPI = window.accountsAPI || {
     
     // 계정 생성
     async create(accountData) {
-        const response = await fetch(`${API_BASE_URL}/api/accounts`, {
+        const response = await fetch(`${API_BASE_URL}/accounts`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -220,7 +220,7 @@ window.accountsAPI = window.accountsAPI || {
     
     // 계정 수정
     async update(accountId, accountData) {
-        const response = await fetch(`${API_BASE_URL}/api/accounts/${accountId}`, {
+        const response = await fetch(`${API_BASE_URL}/accounts/${accountId}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`,
