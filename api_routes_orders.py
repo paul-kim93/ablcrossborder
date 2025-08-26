@@ -150,7 +150,7 @@ async def upload_orders(
                 db.flush()
                 
                 # 각 입점사별로 재계산
-                from crud import recalculate_dashboard_summary_full, update_product_rankings
+                
                 for sid in affected_sellers:
                     recalculate_dashboard_summary_full(db, sid)
                     update_product_rankings(db, sid)
@@ -395,11 +395,11 @@ def update_order_item_price(
     seller_id = item.seller_id_snapshot if item.seller_id_snapshot else None
     
     # 대시보드 통계 재계산 (해당 입점사 + 전체)
-    from crud import recalculate_dashboard_summary_full
+    
     recalculate_dashboard_summary_full(db, seller_id)
     
     # 랭킹 재계산 (해당 입점사 + 전체)
-    from crud import update_product_rankings
+    
     update_product_rankings(db, seller_id)
     
     return {"success": True, "message": "가격이 수정되었습니다"}
