@@ -38,8 +38,9 @@ if ENV == "development":
     origins = ["*"]
 else:
     origins = [
-        "https://your-app.onrender.com",
-        "https://your-frontend.netlify.app",
+        "https://ablcrossborder-production.up.railway.app",  # Railway 자체 도메인
+        "http://localhost:3000",  # 로컬 테스트용
+        "http://localhost:8000",
     ]
 
 app.add_middleware(

@@ -3,7 +3,7 @@
 // === API 기본 설정 ===
 window.API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? ''  // ← 수정됨: 빈 문자열로 변경
-    : 'https://fastapi-backend-myshop-server-paul.onrender.com';
+    : 'https://ablcrossborder-production.up.railway.app';
 
 console.log('API 서버:', window.API_BASE_URL || '현재 도메인');
 
