@@ -841,14 +841,14 @@ async function saveProduct() {
             // 기존 매핑 삭제
             updateProgress(25, '기존 매핑 정리 중...');
             try {
-                const mappingsResponse = await fetch(`/products/${savedProductId}/mappings`, {
+                const mappingsResponse = await fetch(`/api/products/${savedProductId}/mappings`, {
                     headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
                 });
                 
                 if (mappingsResponse.ok) {
                     const existingMappings = await mappingsResponse.json();
                     for (const mapping of existingMappings) {
-                        await fetch(`/products/mappings/${mapping.id}`, {
+                        await fetch(`/api/products/mappings/${mapping.id}`, {
                             method: 'DELETE',
                             headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
                         });
@@ -930,7 +930,7 @@ async function saveProduct() {
                     mappingFormData.append('note', note);
                     
                     try {
-                        const response = await fetch(`/products/${savedProductId}/mappings`, {
+                        const response = await fetch(`/api/products/${savedProductId}/mappings`, {
                             method: 'POST',
                             headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`},
                             body: mappingFormData
@@ -1677,7 +1677,7 @@ function removeMappingRow(rowId) {
 // 기존 매핑 로드 (수정 모달용)
 async function loadProductMappings(productId) {
     try {
-        const response = await fetch(`/products/${productId}/mappings`, {
+        const response = await fetch(`/api/products/${productId}/mappings`, {
             headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
         });
         
