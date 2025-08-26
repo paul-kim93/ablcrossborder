@@ -952,7 +952,7 @@ if (mappingRows.length > 0) {
                 const response = await fetch(`/api/products/${savedProductId}/mappings`, {
                     method: 'POST',
                     headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`},
-                    body: formData
+                    body: mappingFormData
                 });
                 
                 if (!response.ok) {
