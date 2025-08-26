@@ -84,7 +84,7 @@ function renderSellerTable(sellers) {
     
     // 테이블 렌더링 (pageSellers 사용)
     tbody.innerHTML = pageSellers.map(seller => {
-    const isSystem = seller.id === 999999;  // 이 줄 추가
+    const isSystem = seller.id === 0;  // 이 줄 추가
     
     return `
         <tr>

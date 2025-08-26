@@ -40,7 +40,7 @@ ORDER_STATUS_MAP = {
 ORDER_STATUS_REVERSE_MAP = {v: k for k, v in ORDER_STATUS_MAP.items()}
 
 # 통계용 상수
-TOTAL_STATS_SELLER_ID = 999999
+TOTAL_STATS_SELLER_ID = 0
 VALID_STATUS_FOR_STATS = ['待发货', '待收货', '已报关', '已完成']
 DEDUCT_STOCK_STATUSES = ['待发货', '待收货', '已报关', '已完成', '退款/售后']
 
@@ -207,7 +207,7 @@ def recalculate_stats_for_status_change(db: Session, order_id: int, old_status: 
     recalculate_total_stats(db)
 
 def recalculate_total_stats(db: Session):
-    """전체 통계 재계산 (999999)"""
+    """전체 통계 재계산 (0)"""
     total_summary = db.query(DashboardSummary).filter(
         DashboardSummary.seller_id == TOTAL_STATS_SELLER_ID
     ).first()
@@ -231,7 +231,7 @@ def recalculate_total_stats(db: Session):
         )
         db.add(total_summary)
     
-    # 모든 입점사 통계 합산 (999999 제외)
+    # 모든 입점사 통계 합산 (0 제외)
     all_summaries = db.query(DashboardSummary).filter(
         DashboardSummary.seller_id != TOTAL_STATS_SELLER_ID
     ).all()
@@ -659,6 +659,6 @@ def update_product_rankings(db: Session, seller_id: int = None):
         db.commit()
         
         if seller_id:
-            print(f"✅ 선택적 랭킹 업데이트 완료: 입점사 {seller_id} + 전체(999999)")
+            print(f"✅ 선택적 랭킹 업데이트 완료: 입점사 {seller_id} + 전체(0)")
         else:
             print(f"✅ 전체 랭킹 업데이트 완료: {len(update_sellers)}개 입점사")
