@@ -346,7 +346,7 @@ def list_orders_with_items(
         result.append(item_data)
     
     # 전체 카운트 - 필터 적용
-        if unmatched_only:
+    if unmatched_only:
             count_query = db.query(OrderItem).join(Order, OrderItem.order_id == Order.id)
             if seller_id:
                 count_query = count_query.filter(OrderItem.seller_id_snapshot == seller_id)
@@ -355,10 +355,10 @@ def list_orders_with_items(
                 (OrderItem.supply_price == 0)
             )
             total_count = count_query.count()
-        else:
+    else:
             total_count = query.count()
 
-        return {
+    return {
             "orders": result,
             "total": total_count,
             "page": skip // limit + 1,
