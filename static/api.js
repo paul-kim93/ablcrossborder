@@ -192,6 +192,7 @@ window.productsAPI = window.productsAPI || {
 };
 
 // === 계정 API ===
+// === 계정 API ===
 window.accountsAPI = window.accountsAPI || {
     // 계정 목록 조회
     async list() {
@@ -200,18 +201,40 @@ window.accountsAPI = window.accountsAPI || {
     
     // 계정 생성
     async create(accountData) {
-        return await apiCall('/accounts', {
+        const response = await fetch(`${API_BASE_URL}/accounts`, {
             method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'  // 추가
+            },
             body: JSON.stringify(accountData)
         });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => null);
+            throw new Error(error?.detail || '계정 생성 실패');
+        }
+        
+        return response.json();
     },
     
     // 계정 수정
     async update(accountId, accountData) {
-        return await apiCall(`/accounts/${accountId}`, {
+        const response = await fetch(`${API_BASE_URL}/accounts/${accountId}`, {
             method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'  // 추가
+            },
             body: JSON.stringify(accountData)
         });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => null);
+            throw new Error(error?.detail || '계정 수정 실패');
+        }
+        
+        return response.json();
     }
 };
 
