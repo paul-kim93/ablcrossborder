@@ -23,8 +23,8 @@ def create_seller(seller: SellerCreate, db: Session = Depends(get_db), current: 
     new = Seller(
         name=seller.name, 
         contact=seller.contact,
-        created_at=datetime.now(),  # 추가
-        updated_at=datetime.now()   # 추가 (updated_at도 있다면)
+        created_at=get_korea_time_naive(),  # 수정됨
+        updated_at=get_korea_time_naive()   # 수정됨
     )
     db.add(new)
     db.commit()

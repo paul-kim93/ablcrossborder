@@ -18,9 +18,9 @@ def get_korea_time():
 
 def get_korea_time_naive():
     """한국시간 반환 (타임존 제거 - DB 저장용)"""
-    # DB가 time_zone='+09:00'으로 설정되어 있으므로
-    # UTC를 넣으면 DB가 자동으로 +9시간 해서 한국시간으로 저장
-    return datetime.utcnow()
+    from datetime import datetime, timedelta
+    # Railway DB는 UTC이므로 우리가 +9시간 계산
+    return datetime.utcnow() + timedelta(hours=9)
 
 def get_china_time_naive():
     """중국시간 반환 (타임존 제거 - DB 저장용)"""

@@ -165,7 +165,8 @@ async def upload_orders(
                 order_no=order_no,
                 buyer_id=first_row['buyer_id'],
                 order_time=first_row['order_time'],
-                status=new_status
+                status=new_status,
+                created_at=get_korea_time_naive()  # 추가!
             )
             db.add(order)
             new_orders.append(order)
