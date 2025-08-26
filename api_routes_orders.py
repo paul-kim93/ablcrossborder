@@ -64,7 +64,7 @@ async def upload_orders(
     df = pd.read_excel(
      BytesIO(contents),
       header=0,  # 첫 번째 행(0번 인덱스)을 헤더로 사용
-     skiprows=None  # 건너뛸 행 없음
+     skipfooter=1  # 마지막 1줄 제외
 )
 
     # 빈 데이터프레임 체크
@@ -87,7 +87,7 @@ async def upload_orders(
     df = df.rename(columns=column_mapping)
     
     # 7. 병합 셀 처리 (forward fill)
-    fill_columns = ['cross_border', 'order_no', 'buyer_id', 'order_time', 'status']
+    fill_columns = ['cross_border', 'order_no', 'buyer_id', 'order_time', 'status', 'product_code']  # product_code 추가
     for col in fill_columns:
         if col in df.columns:
             df[col] = df[col].ffill()
