@@ -666,7 +666,7 @@ async function deleteSelectedAccounts() {
     
     for (const accountId of selectedAccountIdSet) {
         try {
-            const response = await fetch(`${wwindow.API_BASE_URL}/accounts/${accountId}`, {
+            const response = await fetch(`${window.API_BASE_URL}/accounts/${accountId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
