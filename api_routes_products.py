@@ -319,7 +319,31 @@ def add_product_mapping(
     db.add(mapping)
     db.commit()
     
-    return {"success": True, "message": "매핑 추가 완료"}
+    # 추가: 미확인 주문 자동 업데이트
+    updated_items = db.query(OrderItem).filter(
+        OrderItem.product_code == mapped_code,
+        OrderItem.product_id == None
+    ).update({
+        "product_id": product.id,
+        "seller_id_snapshot": product.seller_id,
+        "quantity": OrderItem.quantity * quantity_multiplier  # 수량 조정
+    })
+    
+    # 가격이 0인 것만 업데이트
+    zero_price_items = db.query(OrderItem).filter(
+        OrderItem.product_code == mapped_code,
+        OrderItem.supply_price == 0
+    ).update({
+        "supply_price": product.supply_price,
+        "sale_price": product.sale_price
+    })
+    
+    db.commit()
+    
+    return {
+        "success": True, 
+        "message": f"매핑 추가 완료, {updated_items}개 주문 연결됨"
+    }
 
 # 매핑 목록 조회
 @router.get("/products/{product_id}/mappings")

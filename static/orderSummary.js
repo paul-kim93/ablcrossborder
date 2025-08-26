@@ -15,6 +15,8 @@ let currentSearchKeyword = '';  // 현재 검색어 저장 - 새로 추가!
 let currentStatusFilter = '';  // 현재 상태 필터 저장 - 새로 추가!
 
 window.selectedSellerName = null;
+let showUnmatchedOnly = false;
+
 // orderSummary.js 상단에 추가
 document.addEventListener('DOMContentLoaded', function() {
     // 이벤트 위임으로 X 버튼 처리
@@ -86,7 +88,10 @@ if (currentOrderUserType === 'admin') {
         if (currentOrderUserType === 'seller' && user.seller_id) {
             url += `&seller_id=${user.seller_id}`;
         }
-        
+        // 바로 이 위치에 추가
+        if (showUnmatchedOnly) {
+            url += '&unmatched_only=true';
+        }
         const response = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -135,6 +140,22 @@ function renderOrdersTable() {
         return;
     }
     
+    function toggleUnmatchedFilter() {
+    showUnmatchedOnly = !showUnmatchedOnly;
+    const btn = document.getElementById('unmatchedFilterBtn');
+    
+    if (showUnmatchedOnly) {
+        btn.style.background = '#28a745';
+        btn.textContent = '전체 보기';
+    } else {
+        btn.style.background = '#dc3545';
+        btn.textContent = '미등록 제품 보기';
+    }
+    
+    currentOrderPage = 1;
+    loadOrdersData();  // loadOrderSummary가 아니라 loadOrdersData
+}
+
     let html = '';
     
     allOrders.forEach(order => {
@@ -1037,3 +1058,4 @@ window.applyOrderProductFilter = applyOrderProductFilter;
 window.removeProductFilter = removeProductFilter;
 window.filterModalProducts = filterModalProducts;
 window.viewPriceHistory = viewPriceHistory; 
+window.toggleUnmatchedFilter = toggleUnmatchedFilter;

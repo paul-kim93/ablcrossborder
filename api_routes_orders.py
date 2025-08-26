@@ -287,6 +287,7 @@ def list_orders_with_items(
     skip: int = 0,
     limit: int = 20,
     seller_id: Optional[int] = None,
+    unmatched_only: bool = False,
     db: Session = Depends(get_db),
     current: Account = Depends(get_current_account)
 ):
@@ -300,7 +301,12 @@ def list_orders_with_items(
     # seller 필터링
     if seller_id:
         query = query.filter(OrderItem.seller_id_snapshot == seller_id)
-    
+     # 이 부분 추가
+    if unmatched_only:
+        query = query.filter(
+            (OrderItem.product_id == None) | 
+            (OrderItem.supply_price == 0)
+        )
     # 정렬 및 페이지네이션
     items = query.order_by(Order.order_time.desc()).offset(skip).limit(limit).all()
     
@@ -339,15 +345,25 @@ def list_orders_with_items(
         
         result.append(item_data)
     
-    # 전체 카운트
-    total_count = query.count()
-    
-    return {
-        "orders": result,
-        "total": total_count,
-        "page": skip // limit + 1,
-        "pages": (total_count + limit - 1) // limit
-    }
+    # 전체 카운트 - 필터 적용
+        if unmatched_only:
+            count_query = db.query(OrderItem).join(Order, OrderItem.order_id == Order.id)
+            if seller_id:
+                count_query = count_query.filter(OrderItem.seller_id_snapshot == seller_id)
+            count_query = count_query.filter(
+                (OrderItem.product_id == None) | 
+                (OrderItem.supply_price == 0)
+            )
+            total_count = count_query.count()
+        else:
+            total_count = query.count()
+
+        return {
+            "orders": result,
+            "total": total_count,
+            "page": skip // limit + 1,
+            "pages": (total_count + limit - 1) // limit
+        }
 
 # === Order Item Price Update API ===
 @router.put("/order-items/{item_id}/price")
