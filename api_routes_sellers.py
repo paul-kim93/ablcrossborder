@@ -18,7 +18,12 @@ router = APIRouter()
 def create_seller(seller: SellerCreate, db: Session = Depends(get_db), current: Account = Depends(admin_only)):
     if db.query(Seller).filter(Seller.name == seller.name).first():
         raise HTTPException(status_code=400, detail="이미 존재하는 입점사명")
-    new = Seller(name=seller.name, contact=seller.contact)
+    new = Seller(
+        name=seller.name, 
+        contact=seller.contact,
+        created_at=datetime.now(),  # 추가
+        updated_at=datetime.now()   # 추가 (updated_at도 있다면)
+    )
     db.add(new)
     db.commit()
     db.refresh(new)
