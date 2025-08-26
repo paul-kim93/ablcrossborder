@@ -883,91 +883,89 @@ async function saveProduct() {
         }
         
         // === 공통: 상세 이미지 업로드 ===
-        if (imageOrder && imageOrder.length > 0) {
-            const uploadedImages = [];
-            
-            for (let i = 0; i < imageOrder.length; i++) {
-                const item = imageOrder[i];
-                
-                if (item.isNew && item.file) {
-                    const progress = 50 + (i * 4);
-                    updateProgress(progress, `상세 이미지 ${i+1}/${imageOrder.length} 업로드 중...`);
-                    
-                    try {
-                        const url = await window.uploadToImageKit(
-                            item.file, 
-                            savedProductId, 
-                            `detail_${String(i).padStart(2, '0')}`
-                        );
-                        uploadedImages.push({url: url, order: i});
-                    } catch (error) {
-                        console.error(`이미지 ${i+1} 업로드 실패:`, error);
-                    }
-                } else if (item.url) {
-                    uploadedImages.push({url: item.url, order: i});
-                }
-            }
-            
-            // === 제품코드 매핑 저장 ===
-        const mappingRows = document.querySelectorAll('#codeMappingContainer .mapping-row');
-        if (mappingRows.length > 0) {
-            updateProgress(95, '제품코드 매핑 저장 중...');
-            
-            for (const row of mappingRows) {
-                const inputs = row.querySelectorAll('input');
-                const select = row.querySelector('select');
-                
-                const mappedCode = inputs[0]?.value?.trim();
-                const multiplier = parseInt(inputs[1]?.value) || 1;
-                const mappingType = select?.value || 'alias';
-                const note = inputs[2]?.value?.trim() || '';
-                
-                if (mappedCode) {
-                    const mappingFormData = new FormData();
-                    mappingFormData.append('mapped_code', mappedCode);
-                    mappingFormData.append('quantity_multiplier', multiplier);
-                    mappingFormData.append('mapping_type', mappingType);
-                    mappingFormData.append('note', note);
-                    
-                    try {
-                        const response = await fetch(`/api/products/${savedProductId}/mappings`, {
-                            method: 'POST',
-                            headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`},
-                            body: mappingFormData
-                        });
-                        
-                        if (!response.ok) {
-                            console.error('매핑 저장 실패:', mappedCode);
-                        }
-                    } catch (error) {
-                        console.error('매핑 저장 오류:', error);
-                    }
-                }
-            }
-        }
+        // === 공통: 상세 이미지 업로드 ===
+if (imageOrder && imageOrder.length > 0) {
+    const uploadedImages = [];
+    
+    for (let i = 0; i < imageOrder.length; i++) {
+        const item = imageOrder[i];
         
-        updateProgress(100, '완료!');
+        if (item.isNew && item.file) {
+            const progress = 50 + (i * 4);
+            updateProgress(progress, `상세 이미지 ${i+1}/${imageOrder.length} 업로드 중...`);
+            
+            try {
+                const url = await window.uploadToImageKit(
+                    item.file, 
+                    savedProductId, 
+                    `detail_${String(i).padStart(2, '0')}`
+                );
+                uploadedImages.push({url: url, order: i});
+            } catch (error) {
+                console.error(`이미지 ${i+1} 업로드 실패:`, error);
+            }
+        } else if (item.url) {
+            uploadedImages.push({url: item.url, order: i});
+        }
+    }
+    
+    // DB에 저장
+    if (uploadedImages.length > 0) {
+        updateProgress(90, '상세 이미지 정보 저장 중...');
+        const formData = new FormData();
+        formData.append('images', JSON.stringify(uploadedImages));
+        
+        const response = await fetch(`/api/products/${savedProductId}/images`, {
+            method: 'POST',
+            headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`},
+            body: formData
+        });
+        
+        if (!response.ok) {
+            console.error('상세 이미지 DB 저장 실패');
+        }
+    }
+}  // <-- 이 괄호 추가 (이미지 블록 닫기)
 
-
-            // DB에 저장
-            if (uploadedImages.length > 0) {
-                updateProgress(90, '상세 이미지 정보 저장 중...');
-                const formData = new FormData();
-                formData.append('images', JSON.stringify(uploadedImages));
-                
-                const response = await fetch(`/api/products/${savedProductId}/images`, {
+// === 제품코드 매핑 저장 === (밖으로 이동!)
+const mappingRows = document.querySelectorAll('#codeMappingContainer .mapping-row');
+if (mappingRows.length > 0) {
+    updateProgress(95, '제품코드 매핑 저장 중...');
+    
+    for (const row of mappingRows) {
+        const inputs = row.querySelectorAll('input');
+        const select = row.querySelector('select');
+        
+        const mappedCode = inputs[0]?.value?.trim();
+        const multiplier = parseInt(inputs[1]?.value) || 1;
+        const mappingType = select?.value || 'alias';
+        const note = inputs[2]?.value?.trim() || '';
+        
+        if (mappedCode) {
+            const mappingFormData = new FormData();
+            mappingFormData.append('mapped_code', mappedCode);
+            mappingFormData.append('quantity_multiplier', multiplier);
+            mappingFormData.append('mapping_type', mappingType);
+            mappingFormData.append('note', note);
+            
+            try {
+                const response = await fetch(`/api/products/${savedProductId}/mappings`, {
                     method: 'POST',
                     headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`},
                     body: formData
                 });
                 
                 if (!response.ok) {
-                    console.error('상세 이미지 DB 저장 실패');
+                    console.error('매핑 저장 실패:', mappedCode);
                 }
+            } catch (error) {
+                console.error('매핑 저장 오류:', error);
             }
         }
-        
-        updateProgress(100, '완료!');
+    }
+}
+
+updateProgress(100, '완료!');
         await new Promise(resolve => setTimeout(resolve, 500));
         alert(editingProductId ? '제품이 수정되었습니다.' : '제품이 등록되었습니다.');
         
