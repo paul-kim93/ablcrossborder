@@ -1743,3 +1743,8 @@ window.showSalesHistory = showSalesHistory;
 window.openSellerFilterModalForList = openSellerFilterModalForList;
 window.applySellerFilterForList = applySellerFilterForList;
 window.resetProductFilters = resetProductFilters;
+// 매핑 관련 함수 전역 노출 추가
+window.addCodeMappingRow = addCodeMappingRow;
+window.removeMappingRow = removeMappingRow;
+window.loadProductMappings = loadProductMappings;
+window.collectMappingData = collectMappingData;
