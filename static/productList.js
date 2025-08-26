@@ -446,6 +446,19 @@ function openCreateProductModal() {
                 <input type="file" id="detailImages" accept="image/*" multiple style="margin: 10px 0;">
                 <div id="imagePreviewList" style="margin-top: 10px;"></div>
             </div>
+
+            <!-- 제품코드 매핑 섹션 -->
+            <div style="margin-bottom: 15px; padding: 15px; background: #f0f8ff; border-radius: 5px;">
+                <label style="font-weight: bold;">추가 제품코드 매핑</label>
+                <button type="button" onclick="addCodeMappingRow()" 
+                        style="margin-left: 10px; padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px;">
+                    + 매핑 추가
+                </button>
+                <div id="codeMappingContainer" style="margin-top: 10px;">
+                    <!-- 동적으로 추가될 매핑 행들 -->
+                </div>
+            </div>
+
         </div>
     `;
     
@@ -553,6 +566,19 @@ async function openEditProductModal(productId) {
                 <input type="file" id="detailImages" accept="image/*" multiple style="margin: 10px 0;">
                 <div id="imagePreviewList" style="margin-top: 10px;"></div>
             </div>
+
+            <!-- 제품코드 매핑 섹션 -->
+            <div style="margin-bottom: 15px; padding: 15px; background: #f0f8ff; border-radius: 5px;">
+                <label style="font-weight: bold;">추가 제품코드 매핑</label>
+                <button type="button" onclick="addCodeMappingRow()" 
+                        style="margin-left: 10px; padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px;">
+                    + 매핑 추가
+                </button>
+                <div id="codeMappingContainer" style="margin-top: 10px;">
+                    <!-- 동적으로 추가될 매핑 행들 -->
+                </div>
+            </div>
+
         </div>
     `;
     
@@ -572,9 +598,11 @@ async function openEditProductModal(productId) {
         if (imageOrder.length > 0) {
             renderImagePreviews();
         }
+        
+        // 매핑 데이터 로드 (추가)
+        loadProductMappings(productId);
     }, 100);
 }
-
 async function handleAdditionalImages(input) {
     const files = Array.from(input.files);
     
@@ -810,7 +838,26 @@ async function saveProduct() {
             updateProgress(20, '제품 정보 수정 중...');
             await window.API.products.update(editingProductId, productData);
             savedProductId = editingProductId;  // 한 번만 선언
-            
+            // 기존 매핑 삭제
+            updateProgress(25, '기존 매핑 정리 중...');
+            try {
+                const mappingsResponse = await fetch(`/products/${savedProductId}/mappings`, {
+                    headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
+                });
+                
+                if (mappingsResponse.ok) {
+                    const existingMappings = await mappingsResponse.json();
+                    for (const mapping of existingMappings) {
+                        await fetch(`/products/mappings/${mapping.id}`, {
+                            method: 'DELETE',
+                            headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('기존 매핑 삭제 실패:', error);
+            }
+
         } else {
             // === 생성 모드 ===
             if (!tempSelectedSeller) {
@@ -861,6 +908,47 @@ async function saveProduct() {
                 }
             }
             
+            // === 제품코드 매핑 저장 ===
+        const mappingRows = document.querySelectorAll('#codeMappingContainer .mapping-row');
+        if (mappingRows.length > 0) {
+            updateProgress(95, '제품코드 매핑 저장 중...');
+            
+            for (const row of mappingRows) {
+                const inputs = row.querySelectorAll('input');
+                const select = row.querySelector('select');
+                
+                const mappedCode = inputs[0]?.value?.trim();
+                const multiplier = parseInt(inputs[1]?.value) || 1;
+                const mappingType = select?.value || 'alias';
+                const note = inputs[2]?.value?.trim() || '';
+                
+                if (mappedCode) {
+                    const mappingFormData = new FormData();
+                    mappingFormData.append('mapped_code', mappedCode);
+                    mappingFormData.append('quantity_multiplier', multiplier);
+                    mappingFormData.append('mapping_type', mappingType);
+                    mappingFormData.append('note', note);
+                    
+                    try {
+                        const response = await fetch(`/products/${savedProductId}/mappings`, {
+                            method: 'POST',
+                            headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`},
+                            body: mappingFormData
+                        });
+                        
+                        if (!response.ok) {
+                            console.error('매핑 저장 실패:', mappedCode);
+                        }
+                    } catch (error) {
+                        console.error('매핑 저장 오류:', error);
+                    }
+                }
+            }
+        }
+        
+        updateProgress(100, '완료!');
+
+
             // DB에 저장
             if (uploadedImages.length > 0) {
                 updateProgress(90, '상세 이미지 정보 저장 중...');
@@ -1545,6 +1633,92 @@ selectedProductSet.clear();
 window.selectedProductIds = [];
 loadProductsData();
 }
+
+// 전역 변수로 매핑 데이터 관리
+let productMappings = [];
+
+// 매핑 행 추가
+function addCodeMappingRow(existingData = null) {
+    const container = document.getElementById('codeMappingContainer');
+    const rowId = Date.now();
+    
+    const rowHTML = `
+        <div class="mapping-row" data-row-id="${rowId}" style="display: flex; gap: 10px; margin-bottom: 10px; padding: 10px; background: white; border: 1px solid #ddd; border-radius: 3px;">
+            <input type="text" placeholder="추가 제품코드" 
+                   value="${existingData ? existingData.mapped_code : ''}"
+                   style="flex: 2; padding: 5px;">
+            <input type="number" placeholder="수량" min="1" 
+                   value="${existingData ? existingData.quantity_multiplier : 1}"
+                   style="flex: 1; padding: 5px;">
+            <select style="flex: 1; padding: 5px;">
+                <option value="bundle" ${existingData?.mapping_type === 'bundle' ? 'selected' : ''}>묶음상품</option>
+                <option value="legacy" ${existingData?.mapping_type === 'legacy' ? 'selected' : ''}>구 제품코드</option>
+                <option value="alias" ${existingData?.mapping_type === 'alias' ? 'selected' : ''}>별칭</option>
+            </select>
+            <input type="text" placeholder="메모" 
+                   value="${existingData ? existingData.note || '' : ''}"
+                   style="flex: 2; padding: 5px;">
+            <button onclick="removeMappingRow(${rowId})" 
+                    style="padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 3px;">
+                삭제
+            </button>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', rowHTML);
+}
+
+// 매핑 행 삭제
+function removeMappingRow(rowId) {
+    const row = document.querySelector(`[data-row-id="${rowId}"]`);
+    if (row) row.remove();
+}
+
+// 기존 매핑 로드 (수정 모달용)
+async function loadProductMappings(productId) {
+    try {
+        const response = await fetch(`/products/${productId}/mappings`, {
+            headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
+        });
+        
+        if (response.ok) {
+            const mappings = await response.json();
+            mappings.forEach(mapping => {
+                addCodeMappingRow(mapping);
+            });
+        }
+    } catch (error) {
+        console.error('매핑 로드 실패:', error);
+    }
+}
+
+// 매핑 데이터 수집
+function collectMappingData() {
+    const mappingRows = document.querySelectorAll('#codeMappingContainer .mapping-row');
+    const mappings = [];
+    
+    mappingRows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const select = row.querySelector('select');
+        
+        const mappedCode = inputs[0].value.trim();
+        const multiplier = parseInt(inputs[1].value) || 1;
+        const mappingType = select.value;
+        const note = inputs[2].value.trim();
+        
+        if (mappedCode) {
+            mappings.push({
+                mapped_code: mappedCode,
+                quantity_multiplier: multiplier,
+                mapping_type: mappingType,
+                note: note
+            });
+        }
+    });
+    
+    return mappings;
+}
+
 
 // 전역 함수로 노출
 window.searchProducts = searchProducts;

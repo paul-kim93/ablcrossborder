@@ -662,3 +662,24 @@ def update_product_rankings(db: Session, seller_id: int = None):
             print(f"✅ 선택적 랭킹 업데이트 완료: 입점사 {seller_id} + 전체(0)")
         else:
             print(f"✅ 전체 랭킹 업데이트 완료: {len(update_sellers)}개 입점사")
+
+    # crud.py에 추가
+def find_product_and_multiplier(db: Session, product_code: str):
+    """제품코드로 실제 제품과 수량 배수 찾기"""
+    from models import Product, ProductCodeMapping
+    
+    # 1. 메인 제품코드 확인
+    product = db.query(Product).filter(Product.product_code == product_code).first()
+    if product:
+        return product, 1
+    
+    # 2. 매핑된 코드 확인
+    mapping = db.query(ProductCodeMapping).filter(
+        ProductCodeMapping.mapped_code == product_code
+    ).first()
+    
+    if mapping:
+        product = db.query(Product).filter(Product.id == mapping.product_id).first()
+        return product, mapping.quantity_multiplier
+    
+    return None, 1

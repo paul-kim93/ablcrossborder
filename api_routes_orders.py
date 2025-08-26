@@ -192,17 +192,21 @@ async def upload_orders(
             
         # 새 주문의 아이템들 처리
         for _, row in group.iterrows():
-            product = all_products.get(row['product_code'])
+            # 매핑 확인 추가
+            from crud import find_product_and_multiplier
+            product, multiplier = find_product_and_multiplier(db, row['product_code'])
             
-            # 제품 있든 없든 무조건 생성!
+            # 실제 수량 계산
+            actual_quantity = int(row['quantity']) * multiplier
+            
             item = OrderItem(
                 order_id=order.id,
-                product_id=product.id if product else None,  # 제품 없으면 NULL
-                product_code=row['product_code'],
-                seller_id_snapshot=product.seller_id if product else None,  # 제품 없으면 NULL
-                quantity=int(row['quantity']),
-                supply_price=product.supply_price if product else Decimal('0'),  # 제품 없으면 0
-                sale_price=product.sale_price if product else Decimal('0'),      # 제품 없으면 0
+                product_id=product.id if product else None,
+                product_code=row['product_code'],  # 원본 코드 저장
+                seller_id_snapshot=product.seller_id if product else None,
+                quantity=actual_quantity,  # 실제 수량 사용
+                supply_price=product.supply_price if product else Decimal('0'),
+                sale_price=product.sale_price if product else Decimal('0'),
                 cny_amount=Decimal(str(row['cny_amount'])) if pd.notna(row['cny_amount']) else None
             )
             new_items.append(item)

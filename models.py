@@ -226,3 +226,15 @@ class ProductImage(Base):
     image_url = Column(String(500), nullable=False)
     display_order = Column(Integer, default=0)
     created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+    # models.py 끝에 추가
+class ProductCodeMapping(Base):
+    __tablename__ = "product_code_mappings"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    mapped_code = Column(String(100), nullable=False, unique=True)
+    quantity_multiplier = Column(Integer, default=1)
+    mapping_type = Column(String(20), default='alias')
+    note = Column(String(255), nullable=True)
+    created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))

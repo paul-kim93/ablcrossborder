@@ -14,7 +14,7 @@ from crud import get_korea_time_naive, DEDUCT_STOCK_STATUSES, UPLOAD_DIR
 from schemas import ProductBase, ProductOut
 from models import ProductImage  # 상단 import에 추가
 import json  # 상단 import에 추가
-
+from models import ProductCodeMapping
 
 router = APIRouter()
 
@@ -284,3 +284,77 @@ def get_product_images(
         ProductImage.product_id == product_id
     ).order_by(ProductImage.display_order).all()
     return [{"url": img.image_url, "order": img.display_order} for img in images]
+
+@router.post("/products/{product_id}/mappings")
+def add_product_mapping(
+    product_id: int,
+    mapped_code: str = Form(...),
+    quantity_multiplier: int = Form(1),
+    mapping_type: str = Form('alias'),
+    note: str = Form(None),
+    db: Session = Depends(get_db),
+    current: Account = Depends(admin_only)
+):
+    # 제품 존재 확인
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="제품 없음")
+    
+    # 중복 체크
+    existing_product = db.query(Product).filter(Product.product_code == mapped_code).first()
+    existing_mapping = db.query(ProductCodeMapping).filter(
+        ProductCodeMapping.mapped_code == mapped_code
+    ).first()
+    
+    if existing_product or existing_mapping:
+        raise HTTPException(status_code=400, detail="이미 사용중인 제품코드")
+    
+    mapping = ProductCodeMapping(
+        product_id=product_id,
+        mapped_code=mapped_code,
+        quantity_multiplier=quantity_multiplier,
+        mapping_type=mapping_type,
+        note=note
+    )
+    db.add(mapping)
+    db.commit()
+    
+    return {"success": True, "message": "매핑 추가 완료"}
+
+# 매핑 목록 조회
+@router.get("/products/{product_id}/mappings")
+def get_product_mappings(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current: Account = Depends(get_current_account)
+):
+    mappings = db.query(ProductCodeMapping).filter(
+        ProductCodeMapping.product_id == product_id
+    ).all()
+    
+    return [{
+        "id": m.id,
+        "mapped_code": m.mapped_code,
+        "quantity_multiplier": m.quantity_multiplier,
+        "mapping_type": m.mapping_type,
+        "note": m.note
+    } for m in mappings]
+
+# 매핑 삭제
+@router.delete("/products/mappings/{mapping_id}")
+def delete_product_mapping(
+    mapping_id: int,
+    db: Session = Depends(get_db),
+    current: Account = Depends(admin_only)
+):
+    mapping = db.query(ProductCodeMapping).filter(
+        ProductCodeMapping.id == mapping_id
+    ).first()
+    
+    if not mapping:
+        raise HTTPException(status_code=404, detail="매핑 없음")
+    
+    db.delete(mapping)
+    db.commit()
+    
+    return {"success": True}
