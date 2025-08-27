@@ -147,13 +147,15 @@ function renderSellerPagination(totalPages) {
     paginationDiv.innerHTML = html;
 }
 
+
+    // 페이지네이션 버튼 렌더링
+    renderSellerPagination(totalPages);
+}
+
 // ===== 페이지 이동 함수 =====
 function goToSellerPage(page) {
     currentSellerPage = page;
     renderSellerTable(filteredSellers);
-}
-    // 페이지네이션 버튼 렌더링
-    renderSellerPagination(totalPages);
 }
  
 // ===== 입점사 검색 =====
@@ -943,7 +945,7 @@ window.openEditSellerModal = openEditSellerModal;
 window.updateSeller = updateSeller;
 window.deleteSelectedSellers = deleteSelectedSellers;
 
-window.goToSellerPage = goToSellerPage;
+
 
 // 파일 맨 아래에 추가
 window.addEventListener('click', function(e) {
