@@ -56,8 +56,8 @@ async def create_product(
         is_active=is_active,
         thumbnail_url=thumbnail_url,        # ImageKit URL 직접 저장
         detail_image_url=detail_image_url,  # ImageKit URL 직접 저장
-        created_at=korea_time,
-        updated_at=korea_time
+        created_at=get_korea_time_naive(),
+        updated_at=get_korea_time_naive()
     )
     db.add(prod)
     db.commit()
