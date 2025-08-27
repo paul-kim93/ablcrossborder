@@ -287,28 +287,33 @@ def list_orders_with_items(
     skip: int = 0,
     limit: int = 20,
     seller_id: Optional[int] = None,
+    product_id: Optional[int] = None,  # 파라미터로 추가
     unmatched_only: bool = False,
     db: Session = Depends(get_db),
     current: Account = Depends(get_current_account)
-    
-):
+):  # 괄호 정리
     # 권한별 필터링
     if current.type == "seller":
         seller_id = current.seller_id
     
-    # 기본 쿼리 - OrderItem 중심으로 변경
+    # 기본 쿼리 - OrderItem 중심
     query = db.query(OrderItem).join(Order, OrderItem.order_id == Order.id)
     
-    # seller 필터링
-    product_id: Optional[int] = None,  # 파라미터에 추가
+    # seller 필터링 추가
+    if seller_id:
+        query = query.filter(OrderItem.seller_id_snapshot == seller_id)
+    
+    # product 필터링
     if product_id:
         query = query.filter(OrderItem.product_id == product_id)
-     # 이 부분 추가
+    
+    # 미연결 상품만 필터링
     if unmatched_only:
         query = query.filter(
             (OrderItem.product_id == None) | 
             (OrderItem.supply_price == 0)
         )
+    
     # 정렬 및 페이지네이션
     items = query.order_by(Order.order_time.desc()).offset(skip).limit(limit).all()
     
