@@ -319,26 +319,46 @@ def add_product_mapping(
     db.add(mapping)
     db.commit()
     
-    # 추가: 미확인 주문 자동 업데이트
-    updated_items = db.query(OrderItem).filter(
+    # 수정: 실제 OrderItem 객체들을 가져와서 업데이트
+    unmatched_items = db.query(OrderItem).filter(
         OrderItem.product_code == mapped_code,
         OrderItem.product_id == None
-    ).update({
-        "product_id": product.id,
-        "seller_id_snapshot": product.seller_id,
-        "quantity": OrderItem.quantity * quantity_multiplier  # 수량 조정
-    })
+    ).all()  # .update() 대신 .all() 사용
     
-    # 가격이 0인 것만 업데이트
-    zero_price_items = db.query(OrderItem).filter(
-        OrderItem.product_code == mapped_code,
-        OrderItem.supply_price == 0
-    ).update({
-        "supply_price": product.supply_price,
-        "sale_price": product.sale_price
-    })
+    updated_count = 0
+    for item in unmatched_items:
+        item.product_id = product.id
+        item.seller_id_snapshot = product.seller_id
+        item.quantity = item.quantity * quantity_multiplier
+        
+        # 가격이 0인 경우만 업데이트
+        if item.supply_price == 0:
+            item.supply_price = product.supply_price
+            item.sale_price = product.sale_price
+        
+        updated_count += 1
     
     db.commit()
+    
+    # 통계 재계산 추가
+    if unmatched_items:
+        from crud import update_dashboard_summary, update_product_rankings
+        
+        # 대시보드 통계 업데이트
+        update_dashboard_summary(db, unmatched_items)
+        
+        # 영향받은 입점사들의 랭킹 업데이트
+        seller_ids = set([item.seller_id_snapshot for item in unmatched_items if item.seller_id_snapshot])
+        for seller_id in seller_ids:
+            update_product_rankings(db, seller_id)
+        
+        # 전체 랭킹도 업데이트
+        update_product_rankings(db)
+    
+    return {
+        "success": True, 
+        "message": f"매핑 추가 완료, {updated_count}개 주문 연결 및 통계 업데이트됨"
+    }
     
     return {
         "success": True, 
