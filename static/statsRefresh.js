@@ -56,7 +56,7 @@ async function startStatsRefresh() {
     try {
         updateProgress(10, '데이터 조회 중...');
         
-        const response = await fetch(`${window.API_BASE_URL}/api/stats/refresh`, {
+        const response = await fetch(`${window.API_BASE_URL}/stats/refresh`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -81,7 +81,7 @@ async function startStatsRefresh() {
         
         setTimeout(() => {
             alert('통계 데이터가 최신화되었습니다.');
-            closeModal();
+            window.closeModal();
             location.reload();  // 대시보드 새로고침
         }, 500);
         
