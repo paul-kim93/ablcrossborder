@@ -83,9 +83,19 @@ document.addEventListener("DOMContentLoaded", async function () {
   const menuSettings = document.getElementById("menu-settings");   // 설정
   const menuStatsRefresh = document.getElementById("menu-stats-refresh");  // 통계 최신화 추가
 
+  let isUploading = false;
+
     fileInputOrders.addEventListener("change", async (e) => {
+      // 중복 업로드 방지
+      if (isUploading) {
+          console.log('이미 업로드 진행 중...');
+          return;
+      }
+      
       const file = e.target.files && e.target.files[0];
       if (!file) return;
+      
+      isUploading = true;  //
       
       // 오버레이 요소들
       const overlay = document.getElementById('uploadOverlay');
@@ -254,8 +264,9 @@ document.addEventListener("DOMContentLoaded", async function () {
               overlay.style.display = 'none';
               alert('업로드 중 오류가 발생했습니다: ' + error.message);
           }, 3000);
-      } finally {
+       } finally {
           fileInputOrders.value = '';
+          isUploading = false;  // 업로드 완료
       }
   });
   
