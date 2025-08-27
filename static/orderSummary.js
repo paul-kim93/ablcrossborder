@@ -13,7 +13,12 @@ let allSellersForOrders = []; // 입점사 목록 추가
 let totalOrderCount = 0;  // 전체 주문 개수 저장용 - 새로 추가!
 let currentSearchKeyword = '';  // 현재 검색어 저장 - 새로 추가!
 let currentStatusFilter = '';  // 현재 상태 필터 저장 - 새로 추가!
-let selectedProductIds = new Set();
+// 전역 변수 초기화 (안전하게 처리)
+if (typeof window.selectedProductIds === 'undefined') {
+    window.selectedProductIds = new Set();
+}
+window.currentProductIdFilter = null;
+
 window.selectedSellerName = null;
 let showUnmatchedOnly = false;
 
@@ -601,7 +606,7 @@ function filterOrders() {
 // 540번 줄부터 555번 줄 사이를 이렇게 수정
 // 제품 필터 - product_id로 비교
 if (window.selectedProductIds && window.selectedProductIds.size > 0) {
-    if (!item.product_id || !window.selectedProductIds.has(item.product_id)) {
+    if (!item.product_id || !window.selectedProductIds.has(parseInt(item.product_id))) {
         return false;
     }
 }
