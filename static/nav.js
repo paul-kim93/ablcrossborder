@@ -26,6 +26,10 @@ document.addEventListener("DOMContentLoaded", async function () {
         uploadHint.style.display = 'none';
       }
     }
+    const statsRefreshMenu = document.getElementById('menu-stats-refresh');
+      if (user.type === 'admin' && statsRefreshMenu) {
+        statsRefreshMenu.style.display = 'block';
+      }
   } catch (error) {
     console.error('권한 확인 실패:', error);
   }
@@ -77,6 +81,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const menuSellers  = document.getElementById("menu-sellers");    // 입점사별 판매현황
   const menuAccount  = document.getElementById("menu-account");    // 계정관리
   const menuSettings = document.getElementById("menu-settings");   // 설정
+  const menuStatsRefresh = document.getElementById("menu-stats-refresh");  // 통계 최신화 추가
 
     fileInputOrders.addEventListener("change", async (e) => {
       const file = e.target.files && e.target.files[0];
@@ -509,6 +514,13 @@ window.changePassword = changePassword;
     window.location.hash = 'overview';  // 설정 후 overview로 돌아가기
     break;
       
+    case 'stats-refresh':
+    if (typeof openStatsRefreshModal === 'function') {
+      openStatsRefreshModal();
+    }
+    window.location.hash = 'overview';
+    break;
+
      default:
         // 기본값: 판매현황
         showOverviewOnly();
@@ -547,6 +559,9 @@ window.changePassword = changePassword;
     menuSettings.addEventListener("click", () => navigateToPage('settings'));
   }
 
+  if (menuStatsRefresh) {
+    menuStatsRefresh.addEventListener("click", () => navigateToPage('stats-refresh'));
+  }
   // ===== URL 해시 변경 감지 =====
   function handleHashChange() {
     const hash = window.location.hash.slice(1); // # 제거

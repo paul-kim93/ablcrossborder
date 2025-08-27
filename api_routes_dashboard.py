@@ -10,7 +10,8 @@ from auth import get_current_account
 from crud import TOTAL_STATS_SELLER_ID, VALID_STATUS_FOR_STATS, get_korea_time_naive
 from models import Order, OrderItem, Product  # Product 추가 필요
 from fastapi import Query
-
+from fastapi import APIRouter, Depends, Query, Body  # Body 추가
+from auth import get_current_account, admin_only  # admin_only 추가
 
 router = APIRouter()
 
@@ -292,6 +293,7 @@ def get_range_chart(
     } for row in result]
 
 
+
 @router.get("/api/last-month-stats")
 def get_last_month_stats(
     seller_id: Optional[int] = Query(None),  # 🔴 seller_id 파라미터 추가
@@ -406,3 +408,33 @@ def get_last_month_stats(
             "order_count": order_count,
             "top_products": seller_products
         }
+    
+@router.post("/stats/refresh")
+def refresh_statistics(
+    body: dict = Body({"days": 30}),  # Body import 필요
+    db: Session = Depends(get_db),
+    current: Account = Depends(admin_only)  # admin_only import 필요
+):
+    """통계 데이터 재계산"""
+    from datetime import datetime, timedelta
+    from crud import recalculate_total_stats
+    
+    days = body.get("days", 30)
+    
+    # 날짜 범위 계산
+    if days == 0:  # 전체
+        start_date = datetime(2020, 1, 1)
+    else:
+        start_date = datetime.now() - timedelta(days=days)
+    
+    # 해당 기간 주문 조회
+    query = db.query(OrderItem).join(Order)
+    if days > 0:
+        query = query.filter(Order.order_time >= start_date)
+    
+    items = query.all()
+    
+    # 전체 재계산
+    recalculate_total_stats(db)
+    
+    return {"success": True, "processed": len(items)}
