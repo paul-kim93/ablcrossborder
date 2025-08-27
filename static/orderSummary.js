@@ -13,7 +13,7 @@ let allSellersForOrders = []; // 입점사 목록 추가
 let totalOrderCount = 0;  // 전체 주문 개수 저장용 - 새로 추가!
 let currentSearchKeyword = '';  // 현재 검색어 저장 - 새로 추가!
 let currentStatusFilter = '';  // 현재 상태 필터 저장 - 새로 추가!
-
+let selectedProductIds = new Set();
 window.selectedSellerName = null;
 let showUnmatchedOnly = false;
 
@@ -90,6 +90,9 @@ if (currentOrderUserType === 'admin') {
 
         // 전체 데이터를 한번에 받기 (검색 기능 때문에)
         let url = `${window.API_BASE_URL}/orders/with-items?skip=0&limit=1000`;
+        if (window.currentProductIdFilter) {  // 새 변수 추가 필요
+            url += `&product_id=${window.currentProductIdFilter}`;
+        }
         
         if (currentOrderUserType === 'seller' && user.seller_id) {
             url += `&seller_id=${user.seller_id}`;
@@ -595,21 +598,10 @@ function filterOrders() {
         
         // 제품 필터 - 단순화
         // 제품 필터 부분 디버깅 추가
-if (selectedProductCodes.size > 0) {
-    // 디버깅 로그 추가
-    console.log('선택된 제품 코드:', Array.from(selectedProductCodes));
-    console.log('아이템 제품 코드:', item.product_code, '타입:', typeof item.product_code);
-    
-    // 대소문자 구분 없이 비교
-    let hasProduct = false;
-    selectedProductCodes.forEach(selectedCode => {
-        if (item.product_code && 
-            item.product_code.toLowerCase() === selectedCode.toLowerCase()) {
-            hasProduct = true;
-        }
-    });
-    
-    if (!hasProduct) {
+// 540번 줄부터 555번 줄 사이를 이렇게 수정
+// 제품 필터 - product_id로 비교
+if (window.selectedProductIds && window.selectedProductIds.size > 0) {
+    if (!item.product_id || !window.selectedProductIds.has(item.product_id)) {
         return false;
     }
 }
@@ -901,8 +893,10 @@ async function loadProductsForFilter() {
             const checked = selectedProductCodes.has(product.product_code) ? 'checked' : '';
             html += `
                 <label style="display: block; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer;">
-                    <input type="checkbox" value="${product.product_code}" 
-                           data-name="${product.name}" ${checked}>
+                    <input type="checkbox" 
+                        value="${product.product_code}" 
+                        data-id="${product.id}"  // 추가
+                        data-name="${product.name}" ${checked}>
                     ${product.name} (${product.product_code})
                 </label>
             `;
@@ -927,32 +921,39 @@ function filterModalProducts() {
 
 // 제품 필터 적용
         // 맞는 함수명
-            function applyOrderProductFilter() {  // ← 이거 맞음!
-                selectedProductCodes.clear();
-                const selectedDiv = document.getElementById('selectedOrderProducts');
-                let tags = '';
-                
-                document.querySelectorAll('#modalProductList input:checked').forEach(checkbox => {
-                    const code = checkbox.value;
-                    const name = checkbox.dataset.name;
-                    selectedProductCodes.add(code);
-                    
-                    tags += `
-                        <span data-product-code="${code}" 
-                            style="display: inline-block; padding: 4px 8px; margin: 2px;
-                                    background: #e9ecef; border-radius: 4px; font-size: 12px;">
-                            ${name}
-                            <button onclick="removeProductFilter('${code}')" 
-                                    style="margin-left: 5px; border: none; background: none; 
-                                        color: #dc3545; cursor: pointer;">×</button>
-                        </span>
-                    `;
-                });
-                
-                selectedDiv.innerHTML = tags;
-                closeModal();
-                filterOrders();
-            }
+            function applyOrderProductFilter() {
+    selectedProductCodes.clear();
+    window.selectedProductIds = new Set();  // product_id도 저장
+    const selectedDiv = document.getElementById('selectedOrderProducts');
+    let tags = '';
+    
+    document.querySelectorAll('#modalProductList input:checked').forEach(checkbox => {
+        const code = checkbox.value;
+        const name = checkbox.dataset.name;
+        const productId = checkbox.dataset.id;  // product_id 가져오기
+        
+        selectedProductCodes.add(code);
+        if (productId) {
+            window.selectedProductIds.add(parseInt(productId));  // ID 저장
+        }
+        
+        tags += `
+            <span data-product-code="${code}" 
+                  data-product-id="${productId}"  // ID도 저장
+                  style="display: inline-block; padding: 4px 8px; margin: 2px;
+                         background: #e9ecef; border-radius: 4px; font-size: 12px;">
+                ${name}
+                <button onclick="removeProductFilter('${code}')" 
+                        style="margin-left: 5px; border: none; background: none; 
+                               color: #dc3545; cursor: pointer;">×</button>
+            </span>
+        `;
+    });
+    
+    selectedDiv.innerHTML = tags;
+    closeModal();
+    filterOrders();
+}
 
 // 제품 필터 제거
 // removeProductFilter 함수 완전 교체

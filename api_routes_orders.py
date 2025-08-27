@@ -290,6 +290,7 @@ def list_orders_with_items(
     unmatched_only: bool = False,
     db: Session = Depends(get_db),
     current: Account = Depends(get_current_account)
+    
 ):
     # 권한별 필터링
     if current.type == "seller":
@@ -299,8 +300,9 @@ def list_orders_with_items(
     query = db.query(OrderItem).join(Order, OrderItem.order_id == Order.id)
     
     # seller 필터링
-    if seller_id:
-        query = query.filter(OrderItem.seller_id_snapshot == seller_id)
+    product_id: Optional[int] = None,  # 파라미터에 추가
+    if product_id:
+        query = query.filter(OrderItem.product_id == product_id)
      # 이 부분 추가
     if unmatched_only:
         query = query.filter(
