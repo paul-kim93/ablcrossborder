@@ -71,10 +71,14 @@ else:
     print("❌ Static 폴더 없음!")
 
 # 기존 코드 아래에 추가
-IMAGEKIT_PRIVATE_KEY = os.getenv("IMAGEKIT_PRIVATE_KEY")
-IMAGEKIT_PUBLIC_KEY = os.getenv("IMAGEKIT_PUBLIC_KEY")
-IMAGEKIT_URL_ENDPOINT = os.getenv("IMAGEKIT_URL_ENDPOINT")
+from imagekitio import ImageKit
 
+imagekit = ImageKit(
+    private_key=IMAGEKIT_PRIVATE_KEY,
+    public_key=IMAGEKIT_PUBLIC_KEY,
+    url_endpoint=IMAGEKIT_URL_ENDPOINT
+)
+app.state.imagekit = imagekit
 # === 기본 엔드포인트 ===
 @app.get("/")
 async def read_index():

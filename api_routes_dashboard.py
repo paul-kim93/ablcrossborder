@@ -411,30 +411,44 @@ def get_last_month_stats(
     
 @router.post("/stats/refresh")
 def refresh_statistics(
-    body: dict = Body({"days": 30}),  # Body import 필요
+    body: dict = Body({"days": 30}),
     db: Session = Depends(get_db),
-    current: Account = Depends(admin_only)  # admin_only import 필요
+    current: Account = Depends(admin_only)
 ):
-    """통계 데이터 재계산"""
-    from datetime import datetime, timedelta
-    from crud import recalculate_total_stats
+    """통계 데이터 재계산 - 전체 재계산 방식"""
+    from crud import recalculate_dashboard_summary_full, update_product_rankings
+    from models import Seller
     
     days = body.get("days", 30)
     
-    # 날짜 범위 계산
-    if days == 0:  # 전체
-        start_date = datetime(2020, 1, 1)
+    # 기간 설정 (0이면 전체)
+    if days == 0:
+        # 전체 기간 재계산
+        print(f"전체 기간 통계 재계산 시작")
     else:
-        start_date = datetime.now() - timedelta(days=days)
+        # 특정 기간만 재계산 (하지만 현재는 전체 재계산으로 처리)
+        print(f"최근 {days}일 통계 재계산 시작")
     
-    # 해당 기간 주문 조회
-    query = db.query(OrderItem).join(Order)
-    if days > 0:
-        query = query.filter(Order.order_time >= start_date)
+    # 모든 입점사 ID 가져오기
+    seller_ids = db.query(Seller.id).all()
+    seller_ids = [s[0] for s in seller_ids]
     
-    items = query.all()
+    # 전체(0) 추가
+    seller_ids.append(TOTAL_STATS_SELLER_ID)
     
-    # 전체 재계산
-    recalculate_total_stats(db)
+    # 각 입점사별로 전체 재계산
+    processed = 0
+    for seller_id in seller_ids:
+        recalculate_dashboard_summary_full(db, seller_id)
+        processed += 1
     
-    return {"success": True, "processed": len(items)}
+    # 랭킹 재계산
+    update_product_rankings(db)
+    
+    db.commit()
+    
+    return {
+        "success": True, 
+        "processed_sellers": processed,
+        "message": f"통계 재계산 완료 (기간: {'전체' if days == 0 else f'최근 {days}일'})"
+    }

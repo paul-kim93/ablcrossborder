@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
 from sqlalchemy.orm import Session
 
+
 from models import Order, OrderItem, Product, Seller, ImportBatch, DashboardSummary, Account, OrderItemAudit
 from db import get_db
 from auth import get_current_account, admin_only
@@ -123,6 +124,7 @@ async def upload_orders(
     # 13. DB 저장 (주문번호별 그룹)
     new_orders = []
     new_items = []
+    affected_sellers_from_status_change = set()  # 추가: 상태 변경으로 영향받은 입점사들
 
     for order_no, group in df_filtered.groupby('order_no'):
         first_row = group.iloc[0]
@@ -134,31 +136,21 @@ async def upload_orders(
         
         if order:
             # 기존 주문 - 상태 변경시 통계 재계산 추가!
+            # 기존 주문 - 상태 변경시 통계 재계산 추가!
             if order.status != new_status:
                 old_status = order.status
                 order.status = new_status
                 stats['updated_orders'] += 1
                 
-                # ✅ 영향받은 입점사들 수집
-                affected_sellers = set()
+                # 영향받은 입점사들 수집만 (재계산은 나중에)
                 order_items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
                 for oi in order_items:
                     if oi.seller_id_snapshot:
-                        affected_sellers.add(oi.seller_id_snapshot)
+                        affected_sellers_from_status_change.add(oi.seller_id_snapshot)
                 
-                # 상태 변경에 따른 통계 재계산
-                db.flush()
+                # flush 제거 (마지막에 한 번만)
+                # 재계산 코드 모두 삭제
                 
-                # 각 입점사별로 재계산
-                
-                for sid in affected_sellers:
-                    recalculate_dashboard_summary_full(db, sid)
-                    update_product_rankings(db, sid)
-                
-                # 전체 통계도 업데이트
-                recalculate_dashboard_summary_full(db, TOTAL_STATS_SELLER_ID)
-                update_product_rankings(db, TOTAL_STATS_SELLER_ID)
-              
         else:
             # 신규 주문
             order = Order(
@@ -220,27 +212,38 @@ async def upload_orders(
     # 한번에 저장 (최적화!)
     if new_items:
         db.bulk_save_objects(new_items)
-    
-    # 13. ImportBatch 기록
+        db.flush()  # 여기서 한 번만 flush
+
+
+    ## 13. ImportBatch 기록
     import_batch = ImportBatch(
         source_name=file.filename,
         hash=file_hash,
         row_count_total=len(df),
         row_count_matched=stats['new_items'] + stats['skipped_items'],
         imported_by=current.id,
-        imported_at=get_korea_time_naive()  # 추가
+        imported_at=get_korea_time_naive()
     )
     db.add(import_batch)
-    
-   # 13-1. 통계 업데이트 추가!
+
+    # 13-1. 통계 업데이트 - 마지막에 한 번만!
     if new_items:
+        # 새 주문 아이템들 부분 계산
         update_dashboard_summary(db, new_items)
 
-     # 13-2. 제품 랭킹 업데이트 추가! (전체 재계산)
-    update_product_rankings(db)  # seller_id 없이 호출 = 전체
+    # 13-2. 상태 변경된 주문들 처리
+    if affected_sellers_from_status_change:
+        # 상태 변경은 이미 DB에 반영되었으므로 전체 재계산 필요
+        for seller_id in affected_sellers_from_status_change:
+            recalculate_dashboard_summary_full(db, seller_id)
+
+    # 13-3. 랭킹은 맨 마지막에 한 번만
+    if new_items or stats['updated_orders'] > 0:
+        update_product_rankings(db)  # 전체 한 번만
 
     # 14. 커밋
     db.commit()
+    
     
     # 15. 결과 반환
     return {
@@ -421,14 +424,34 @@ def update_order_item_price(
     # 해당 입점사만 재계산
     seller_id = item.seller_id_snapshot if item.seller_id_snapshot else None
     
-    # 대시보드 통계 재계산 (해당 입점사 + 전체)
-    
-    recalculate_dashboard_summary_full(db, seller_id)
-    
-    # 랭킹 재계산 (해당 입점사 + 전체)
-    
-    update_product_rankings(db, seller_id)
-    
+    # 커밋 전에 차액 계산
+    if old_supply_price != new_supply_price or old_sale_price != new_sale_price:
+        # 차액 계산
+        supply_diff = (new_supply_price - old_supply_price) * item.quantity
+        sale_diff = (new_sale_price - old_sale_price) * item.quantity
+        
+        # 해당 입점사 통계 업데이트
+        seller_id = item.seller_id_snapshot if item.seller_id_snapshot else TOTAL_STATS_SELLER_ID
+        summary = db.query(DashboardSummary).filter(
+            DashboardSummary.seller_id == seller_id
+        ).first()
+        
+        if summary:
+            summary.total_supply_amount += supply_diff
+            summary.total_sale_amount += sale_diff
+            summary.last_updated = get_korea_time_naive()
+        
+        # 전체(0) 통계도 업데이트
+        if seller_id != TOTAL_STATS_SELLER_ID:
+            total_summary = db.query(DashboardSummary).filter(
+                DashboardSummary.seller_id == TOTAL_STATS_SELLER_ID
+            ).first()
+            if total_summary:
+                total_summary.total_supply_amount += supply_diff
+                total_summary.total_sale_amount += sale_diff
+                total_summary.last_updated = get_korea_time_naive()
+
+    db.commit()
     return {"success": True, "message": "가격이 수정되었습니다"}
 
 # 🔴 파일 맨 끝에 추가

@@ -4,13 +4,9 @@ function openStatsRefreshModal() {
             <h3 style="margin-bottom: 20px;">통계 데이터 최신화</h3>
             
             <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 10px;">계산 범위 선택:</label>
-                <select id="statsRefreshRange" style="width: 100%; padding: 10px;">
-                    <option value="all">전체</option>
-                    <option value="180">최근 6개월</option>
-                    <option value="90">최근 3개월</option>
-                    <option value="30" selected>최근 30일</option>
-                </select>
+                <p style="font-size: 14px; color: #666;">
+                    모든 주문 데이터를 기반으로 통계를 다시 계산합니다.
+                </p>
             </div>
             
             <div id="refreshProgressDiv" style="display: none;">
@@ -23,7 +19,7 @@ function openStatsRefreshModal() {
             </div>
             
             <p style="color: #dc3545; font-size: 12px; margin-top: 15px;">
-                ⚠️ 대량 데이터 재계산은 시간이 걸릴 수 있습니다.
+                ⚠️ 전체 데이터 재계산은 시간이 걸릴 수 있습니다.
             </p>
         </div>
     `;
@@ -40,8 +36,8 @@ function openStatsRefreshModal() {
     });
 }
 
+
 async function startStatsRefresh() {
-    const range = document.getElementById('statsRefreshRange').value;
     const progressDiv = document.getElementById('refreshProgressDiv');
     const startBtn = document.getElementById('startRefreshBtn');
     
@@ -62,7 +58,7 @@ async function startStatsRefresh() {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ days: range === 'all' ? 0 : parseInt(range) })
+            body: JSON.stringify({ days: 0 })
         });
         
         if (!response.ok) throw new Error('통계 재계산 실패');

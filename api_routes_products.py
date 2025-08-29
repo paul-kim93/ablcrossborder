@@ -367,9 +367,18 @@ def add_product_mapping(
         OrderItem.product_id == None
     ).all()
     
-    # 각 아이템 업데이트
+    # 각 아이템 업데이트 및 차액 계산
     updated_count = 0
+    total_supply_diff = Decimal('0')
+    total_sale_diff = Decimal('0')
+    affected_seller_id = product.seller_id
+
     for item in unmatched_items:
+        # 이전 값 저장
+        old_supply_total = item.supply_price * item.quantity
+        old_sale_total = item.sale_price * item.quantity
+        
+        # 업데이트
         item.product_id = product.id
         item.seller_id_snapshot = product.seller_id
         item.quantity = item.quantity * quantity_multiplier
@@ -378,26 +387,44 @@ def add_product_mapping(
             item.supply_price = product.supply_price
             item.sale_price = product.sale_price
         
+        # 차액 계산
+        new_supply_total = item.supply_price * item.quantity
+        new_sale_total = item.sale_price * item.quantity
+        total_supply_diff += (new_supply_total - old_supply_total)
+        total_sale_diff += (new_sale_total - old_sale_total)
+        
         updated_count += 1
-    
+
     db.commit()
-    
-    # 통계 재계산
-    if unmatched_items:
-        from crud import update_dashboard_summary, update_product_rankings
+
+    # 통계 부분 계산
+    if updated_count > 0:
+        from models import DashboardSummary
+        from crud import TOTAL_STATS_SELLER_ID, update_product_rankings
         
-        update_dashboard_summary(db, unmatched_items)
+        # 해당 입점사 통계 업데이트
+        summary = db.query(DashboardSummary).filter(
+            DashboardSummary.seller_id == affected_seller_id
+        ).first()
+        if summary:
+            summary.total_supply_amount += total_supply_diff
+            summary.total_sale_amount += total_sale_diff
+            summary.last_updated = get_korea_time_naive()
         
-        affected_sellers = set()
-        for item in unmatched_items:
-            if item.seller_id_snapshot:
-                affected_sellers.add(item.seller_id_snapshot)
+        # 전체 통계 업데이트
+        total_summary = db.query(DashboardSummary).filter(
+            DashboardSummary.seller_id == TOTAL_STATS_SELLER_ID
+        ).first()
+        if total_summary:
+            total_summary.total_supply_amount += total_supply_diff
+            total_summary.total_sale_amount += total_sale_diff
+            total_summary.last_updated = get_korea_time_naive()
         
-        for seller_id in affected_sellers:
-            update_product_rankings(db, seller_id)
+        # 랭킹 업데이트
+        update_product_rankings(db)
         
-        update_product_rankings(db)  # 전체 랭킹
-    
+        db.commit()
+
     return {
         "success": True, 
         "message": f"매핑 추가 완료, {updated_count}개 주문 연결 및 통계 업데이트됨"
