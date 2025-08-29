@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, ForeignKey, DateTime, Text, TIMESTAMP, Numeric
+    Column, Integer, String, ForeignKey, DateTime, Text, TIMESTAMP, Numeric, Date
 )
 from sqlalchemy.orm import relationship
     # NOTE: relationship은 필요한 곳만 설정
@@ -241,13 +241,45 @@ class ProductCodeMapping(Base):
 
 
 
-#class ProductPriceHistory(Base):
-#    __tablename__ = 'product_price_history'
-#    
-#    id = Column(Integer, primary_key=True)
-#    product_id = Column(Integer, ForeignKey('products.id'))
-#    supply_price = Column(DECIMAL(18, 2))
-#    sale_price = Column(DECIMAL(18, 2))
-#    effective_date = Column(Date)
-#    change_by = Column(Integer, ForeignKey('accounts.id'))  # DB 컬럼명과 일치
-#    created_at = Column(DateTime)
+# 선적 관리 시스템 모델
+from sqlalchemy import Date  # 상단 import에 추가
+
+class ProductShipment(Base):
+    __tablename__ = 'product_shipments'
+    
+    id = Column(Integer, primary_key=True)
+    product_id = Column(Integer, ForeignKey('products.id'))
+    shipment_no = Column(String(50))
+    arrival_date = Column(Date)
+    initial_quantity = Column(Integer)
+    current_quantity = Column(Integer)
+    remaining_quantity = Column(Integer)
+    supply_price = Column(DECIMAL(18, 2))
+    sale_price = Column(DECIMAL(18, 2))
+    is_active = Column(Integer, default=1)
+    created_by = Column(Integer, ForeignKey('accounts.id'))
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
+
+class ShipmentPriceHistory(Base):
+    __tablename__ = 'shipment_price_history'
+    
+    id = Column(Integer, primary_key=True)
+    shipment_id = Column(Integer, ForeignKey('product_shipments.id'))
+    supply_price = Column(DECIMAL(18, 2))
+    sale_price = Column(DECIMAL(18, 2))
+    effective_date = Column(Date)
+    reason = Column(String(255))
+    changed_by = Column(Integer, ForeignKey('accounts.id'))
+    created_at = Column(DateTime)
+
+class ShipmentStockAdjustment(Base):
+    __tablename__ = 'shipment_stock_adjustments'
+    
+    id = Column(Integer, primary_key=True)
+    shipment_id = Column(Integer, ForeignKey('product_shipments.id'))
+    adjustment_type = Column(String(20))
+    quantity_delta = Column(Integer)
+    reason = Column(String(255))
+    adjusted_by = Column(Integer, ForeignKey('accounts.id'))
+    adjusted_at = Column(DateTime)

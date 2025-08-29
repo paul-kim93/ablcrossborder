@@ -684,24 +684,114 @@ def find_product_and_multiplier(db: Session, product_code: str):
     
     return None, 1
 
-#def get_price_at_date(db: Session, product_id: int, order_date):
-  #  """특정 날짜의 제품 가격 조회"""
-  #  from models import ProductPriceHistory, Product
-  #  from decimal import Decimal
+
+# ===== 선적 관리 FIFO 함수 =====
+def get_shipment_price_at_date(db: Session, shipment_id: int, order_date):
+    """특정 날짜의 선적 가격 조회"""
+    from models import ShipmentPriceHistory, ProductShipment
     
- #   if hasattr(order_date, 'date'):
- #       order_date = order_date.date()
+    if hasattr(order_date, 'date'):
+        order_date = order_date.date()
     
- #   price = db.query(ProductPriceHistory).filter(
- #       ProductPriceHistory.product_id == product_id,
- #       ProductPriceHistory.effective_date <= order_date
- #   ).order_by(ProductPriceHistory.effective_date.desc()).first()
+    # 해당 날짜에 유효한 가격 찾기
+    price = db.query(ShipmentPriceHistory).filter(
+        ShipmentPriceHistory.shipment_id == shipment_id,
+        ShipmentPriceHistory.effective_date <= order_date
+    ).order_by(ShipmentPriceHistory.effective_date.desc()).first()
     
- #   if price:
- #       return price.supply_price, price.sale_price
+    if price:
+        return price.supply_price, price.sale_price
     
- #   product = db.query(Product).filter(Product.id == product_id).first()
-#    if product:
-#        return product.supply_price, product.sale_price
+    # 이력이 없으면 선적의 현재 가격
+    shipment = db.query(ProductShipment).filter(ProductShipment.id == shipment_id).first()
+    if shipment:
+        return shipment.supply_price, shipment.sale_price
     
-#   return Decimal('0'), Decimal('0')
+    return Decimal('0'), Decimal('0')
+
+def get_current_product_price(db: Session, product_id: int):
+    """제품의 현재 판매 가격 (가장 오래된 활성 선적)"""
+    from models import ProductShipment
+    
+    shipment = db.query(ProductShipment).filter(
+        ProductShipment.product_id == product_id,
+        ProductShipment.remaining_quantity > 0,
+        ProductShipment.is_active == 1
+    ).order_by(ProductShipment.arrival_date.asc()).first()
+    
+    if shipment:
+        return shipment.supply_price, shipment.sale_price
+    return Decimal('0'), Decimal('0')
+
+def get_product_total_stock(db: Session, product_id: int):
+    """제품의 총 재고 수량"""
+    from models import ProductShipment
+    
+    total = db.query(func.sum(ProductShipment.remaining_quantity)).filter(
+        ProductShipment.product_id == product_id,
+        ProductShipment.is_active == 1
+    ).scalar()
+    
+    return total or 0
+
+def process_order_fifo(db: Session, product_id: int, quantity_needed: int, order_date):
+    """FIFO 방식으로 주문 처리 및 가격 계산"""
+    from models import ProductShipment
+    
+    if hasattr(order_date, 'date'):
+        order_date = order_date.date()
+    
+    # 활성 선적을 날짜순으로 조회
+    shipments = db.query(ProductShipment).filter(
+        ProductShipment.product_id == product_id,
+        ProductShipment.remaining_quantity > 0,
+        ProductShipment.is_active == 1
+    ).order_by(ProductShipment.arrival_date.asc()).all()
+    
+    total_supply_price = Decimal('0')
+    total_sale_price = Decimal('0')
+    shipments_used = []
+    
+    for shipment in shipments:
+        if quantity_needed <= 0:
+            break
+        
+        # 이 선적에서 사용할 수량
+        use_qty = min(quantity_needed, shipment.remaining_quantity)
+        
+        # 해당 날짜의 선적 가격 조회
+        supply_price, sale_price = get_shipment_price_at_date(
+            db, shipment.id, order_date
+        )
+        
+        # 가격 계산
+        total_supply_price += supply_price * use_qty
+        total_sale_price += sale_price * use_qty
+        
+        # 사용 내역 기록
+        shipments_used.append({
+            'shipment_id': shipment.id,
+            'quantity': use_qty,
+            'supply_price': supply_price,
+            'sale_price': sale_price
+        })
+        
+        # 재고 차감 (실제로는 주문 확정시에만)
+        quantity_needed -= use_qty
+    
+    # 평균 가격 계산
+    if shipments_used:
+        total_qty = sum(s['quantity'] for s in shipments_used)
+        avg_supply_price = total_supply_price / total_qty
+        avg_sale_price = total_sale_price / total_qty
+    else:
+        avg_supply_price = Decimal('0')
+        avg_sale_price = Decimal('0')
+    
+    return {
+        'supply_price': avg_supply_price,
+        'sale_price': avg_sale_price,
+        'shipments_used': shipments_used,
+        'total_supply_amount': total_supply_price,
+        'total_sale_amount': total_sale_price
+    }

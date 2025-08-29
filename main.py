@@ -25,6 +25,8 @@ from crud import UPLOAD_DIR  # crud에서 가져오기
 
 from models import Account  # Account 모델 추가
 # FastAPI 앱 생성 (반드시 라우터 등록 전에!)
+from api_routes_shipments import router as shipments_router
+
 app = FastAPI()
 
 
@@ -59,6 +61,7 @@ app.include_router(accounts_router)
 app.include_router(orders_router)
 app.include_router(dashboard_router)
 app.include_router(products_router, prefix="/api")  # prefix 확인
+app.include_router(shipments_router)
 
 # === 정적 파일 서빙 ===
 if os.path.exists("static"):

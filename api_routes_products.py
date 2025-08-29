@@ -15,6 +15,8 @@ from schemas import ProductBase, ProductOut
 from models import ProductImage  # 상단 import에 추가
 import json  # 상단 import에 추가
 from models import ProductCodeMapping
+from models import Product, Seller, Order, OrderItem, StockAdjustment, Account, ProductShipment, ShipmentPriceHistory
+
 
 router = APIRouter()
 
@@ -27,12 +29,14 @@ async def create_product(
     name: str = Form(...),
     product_code: str = Form(...),
     seller_id: int = Form(...),
-    initial_stock: int = Form(...),
-    supply_price: str = Form(...),
-    sale_price: str = Form(...),
+    initial_stock: int = Form(0),  # 기본값 0으로 변경
+    supply_price: str = Form("0"),  # 기본값 0
+    sale_price: str = Form("0"),    # 기본값 0
     is_active: int = Form(1),
-    thumbnail_url: str = Form(None),      # 변경: UploadFile → str (URL)
-    detail_image_url: str = Form(None),   # 변경: UploadFile → str (URL)
+    thumbnail_url: str = Form(None),
+    detail_image_url: str = Form(None),
+    # 선적 정보 (JSON 문자열로 받음)
+    shipments: str = Form(None),
     db: Session = Depends(get_db),
     current: Account = Depends(admin_only)
 ):
@@ -40,11 +44,24 @@ async def create_product(
         raise HTTPException(status_code=400, detail="입점사 없음")
 
     if db.query(Product).filter(Product.product_code == product_code).first():
-        raise HTTPException(status_code=400, detail="이미 존재하는 제품코드")
-
-    # 파일 업로드 로직 삭제 (40-52번째 줄 전체 삭제)
+            raise HTTPException(status_code=400, detail="이미 존재하는 제품코드")
     
     korea_time = get_korea_time_naive()
+    
+    # 선적 정보 파싱
+    shipment_list = []
+    if shipments:
+        import json
+        try:
+            shipment_list = json.loads(shipments)
+        except:
+            raise HTTPException(status_code=400, detail="선적 정보 형식 오류")
+    
+    # 선적이 있으면 첫 번째 선적 기준으로 가격 설정
+    if shipment_list:
+        supply_price = str(shipment_list[0].get('supply_price', 0))
+        sale_price = str(shipment_list[0].get('sale_price', 0))
+        initial_stock = sum(s.get('quantity', 0) for s in shipment_list)
 
     prod = Product(
         name=name,
@@ -54,18 +71,46 @@ async def create_product(
         supply_price=Decimal(supply_price),
         sale_price=Decimal(sale_price),
         is_active=is_active,
-        thumbnail_url=thumbnail_url,        # ImageKit URL 직접 저장
-        detail_image_url=detail_image_url,  # ImageKit URL 직접 저장
-        created_at=get_korea_time_naive(),
-        updated_at=get_korea_time_naive()
+        thumbnail_url=thumbnail_url,
+        detail_image_url=detail_image_url,
+        created_at=korea_time,
+        updated_at=korea_time
     )
     db.add(prod)
-    db.commit()
-    db.refresh(prod)
-
-    # 나머지 코드는 그대로...
-
-    # 가격이 0인 미연결 OrderItem만 업데이트!
+    db.flush()  # ID 생성
+    
+    # 선적 정보 저장
+    for ship_data in shipment_list:
+        shipment = ProductShipment(
+            product_id=prod.id,
+            shipment_no=ship_data.get('shipment_no', '초기재고'),
+            arrival_date=datetime.strptime(ship_data.get('arrival_date', str(datetime.now().date())), '%Y-%m-%d').date() if ship_data.get('arrival_date') else datetime.now().date(),
+            initial_quantity=ship_data.get('quantity', 0),
+            current_quantity=ship_data.get('quantity', 0),
+            remaining_quantity=ship_data.get('quantity', 0),
+            supply_price=Decimal(str(ship_data.get('supply_price', 0))),
+            sale_price=Decimal(str(ship_data.get('sale_price', 0))),
+            is_active=1,
+            created_by=current.id,
+            created_at=korea_time,
+            updated_at=korea_time
+        )
+        db.add(shipment)
+        db.flush()
+        
+        # 초기 가격 이력
+        price_history = ShipmentPriceHistory(
+            shipment_id=shipment.id,
+            supply_price=Decimal(str(ship_data.get('supply_price', 0))),
+            sale_price=Decimal(str(ship_data.get('sale_price', 0))),
+            effective_date=shipment.arrival_date,
+            reason="초기 등록",
+            changed_by=current.id,
+            created_at=korea_time
+        )
+        db.add(price_history)
+    
+    # 미연결 OrderItem 업데이트 (기존 코드 유지)
     updated_count = db.query(OrderItem).filter(
         OrderItem.product_code == product_code,
         OrderItem.supply_price == 0,
@@ -77,9 +122,10 @@ async def create_product(
         "sale_price": prod.sale_price
     })
     
+    db.commit()
+    
     if updated_count > 0:
-        db.commit()
-        print(f"✅ {updated_count}개 미연결 주문 가격 자동 설정")
+         print(f"✅ {updated_count}개 미연결 주문 가격 자동 설정")
     
     return prod
 
@@ -98,23 +144,27 @@ def list_products(
     
     products = q.all()
     
-    # 각 제품의 현재 수량 계산
+    # 각 제품의 현재 가격/재고 계산 (선적 기준)
     for product in products:
-        # 재고 조정 합계
-        adjustments = db.query(func.sum(StockAdjustment.delta_qty))\
-            .filter(StockAdjustment.product_id == product.id)\
-            .scalar() or 0
+        # 현재 판매 가능한 가장 오래된 선적 찾기
+        current_shipment = db.query(ProductShipment).filter(
+            ProductShipment.product_id == product.id,
+            ProductShipment.remaining_quantity > 0,
+            ProductShipment.is_active == 1
+        ).order_by(ProductShipment.arrival_date.asc()).first()
         
-        # 판매 수량 계산 (환불/교환 포함, 취소 제외)
-        sold_qty = db.query(func.sum(OrderItem.quantity))\
-            .join(Order, OrderItem.order_id == Order.id)\
-            .filter(
-                OrderItem.product_id == product.id,
-                Order.status.in_(DEDUCT_STOCK_STATUSES)  # 환불/교환도 포함
-            ).scalar() or 0
+        if current_shipment:
+            # 현재 가격 = 가장 오래된 활성 선적 가격
+            product.supply_price = current_shipment.supply_price
+            product.sale_price = current_shipment.sale_price
+            
+        # 총 재고 = 모든 활성 선적의 remaining_quantity 합
+        total_stock = db.query(func.sum(ProductShipment.remaining_quantity)).filter(
+            ProductShipment.product_id == product.id,
+            ProductShipment.is_active == 1
+        ).scalar() or 0
         
-        # 현재 수량 = 초기 재고 + 조정 - 판매
-        product.current_stock = product.initial_stock + adjustments - sold_qty
+        product.current_stock = total_stock
     
     return products
 
@@ -124,19 +174,22 @@ def get_product(product_id: int, db: Session = Depends(get_db), current: Account
     if not p:
         raise HTTPException(status_code=404, detail="제품 없음")
     
-    # 현재 수량 계산
-    adjustments = db.query(func.sum(StockAdjustment.delta_qty))\
-        .filter(StockAdjustment.product_id == p.id)\
-        .scalar() or 0
+    # 현재 가격 (가장 오래된 활성 선적)
+    current_shipment = db.query(ProductShipment).filter(
+        ProductShipment.product_id == product_id,
+        ProductShipment.remaining_quantity > 0,
+        ProductShipment.is_active == 1
+    ).order_by(ProductShipment.arrival_date.asc()).first()
     
-    sold_qty = db.query(func.sum(OrderItem.quantity))\
-        .join(Order, OrderItem.order_id == Order.id)\
-        .filter(
-            OrderItem.product_id == p.id,
-            Order.status.in_(DEDUCT_STOCK_STATUSES)
-        ).scalar() or 0
+    if current_shipment:
+        p.supply_price = current_shipment.supply_price
+        p.sale_price = current_shipment.sale_price
     
-    p.current_stock = p.initial_stock + adjustments - sold_qty
+    # 총 재고
+    p.current_stock = db.query(func.sum(ProductShipment.remaining_quantity)).filter(
+        ProductShipment.product_id == product_id,
+        ProductShipment.is_active == 1
+    ).scalar() or 0
     
     return p
 
@@ -217,35 +270,17 @@ def delete_product(product_id: int, db: Session = Depends(get_db), current: Acco
 @router.post("/products/{product_id}/stock-adjust")
 def adjust_stock(
     product_id: int,
-    adjustment_type: str = Form(...),  # "add" or "subtract"
+    adjustment_type: str = Form(...),
     quantity: int = Form(...),
     note: str = Form(...),
     db: Session = Depends(get_db),
     current: Account = Depends(admin_only)
 ):
-    product = db.query(Product).filter(Product.id == product_id).first()
-    if not product:
-        raise HTTPException(status_code=404, detail="제품 없음")
-    
-    # 재고 조정 기록 생성
-    delta_qty = quantity if adjustment_type == "add" else -quantity
-    reason = "receipt" if adjustment_type == "add" else "disposal"
-    
-    adjustment = StockAdjustment(
-        product_id=product_id,
-        delta_qty=delta_qty,
-        reason=reason,
-        note=note,
-        adjusted_by=current.id,
-        adjusted_at=get_korea_time_naive(),
-        created_at=get_korea_time_naive()
-    )  # ✅ 올바른 괄호 위치
-    
-    db.add(adjustment)
-    db.commit()
-    
-    return {"ok": True, "message": "재고 조정 완료", "delta": delta_qty}
-
+    # 선적 시스템으로 대체됨
+    raise HTTPException(
+        status_code=400, 
+        detail="재고 조정은 선적 관리에서 처리하세요. /api/shipments/{shipment_id}/adjust-stock"
+    )
 
 
 

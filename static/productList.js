@@ -11,6 +11,8 @@ let selectedSellerIdForFilter = null;
 // 이미지 순서 관리 변수
 let imageOrder = [];
 let draggedIndex = null;
+let tempShipments = [];  // 임시 선적 데이터
+let editingShipmentId = null;  // 수정 중인 선적 ID
 
 // chart.js와 공유하는 전역 변수 - 이미 chart.js에 선언되어 있으면 사용
 if (typeof selectedProductIds === 'undefined') {
@@ -413,27 +415,17 @@ function openCreateProductModal() {
                 </div>
             </div>
             
-            <div style="margin-bottom: 15px;">
-                <label>재고수량 *</label>
-                <input type="number" id="productModalStock" 
-                       style="width: 100%; padding: 8px;"
-                       min="0" value="0">
+                        <div style="margin-bottom: 15px; padding: 15px; background: #e8f4f8; border-radius: 5px;">
+                <label style="font-weight: bold;">선적 정보 *</label>
+                <button type="button" onclick="openAddShipmentModal()" 
+                        style="margin-left: 10px; padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px;">
+                    + 선적 추가
+                </button>
+                <div id="shipmentListContainer" style="margin-top: 10px;">
+                    <!-- 동적으로 추가될 선적 목록 -->
+                </div>
             </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label>공급가 *</label>
-                <input type="number" id="productModalSupplyPrice" 
-                       style="width: 100%; padding: 8px;"
-                       placeholder="공급가 ($)" min="0">
-            </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label>판매가 *</label>
-                <input type="number" id="productModalSalePrice" 
-                       style="width: 100%; padding: 8px;"
-                       placeholder="판매가 ($)" min="0">
-            </div>
-            
+
             <!-- 메인 썸네일만 -->
             <div style="margin-bottom: 15px;">
                 <label>메인 썸네일 (리스트 표시용)</label>
@@ -535,22 +527,22 @@ async function openEditProductModal(productId) {
                 </div>
             </div>
             
+            <!-- 기존 재고/가격 필드 다음에 추가 -->
             <div style="margin-bottom: 15px;">
-                <label>재고수량 *</label>
-                <input type="number" id="productModalStock" value="${product.initial_stock}"
-                       style="width: 100%; padding: 8px;">
+                <label>현재 재고</label>
+                <input type="text" value="${product.current_stock || 0}" readonly
+                    style="width: 100%; padding: 8px; background: #f8f9fa;">
             </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label>공급가 *</label>
-                <input type="number" id="productModalSupplyPrice" value="${product.supply_price}"
-                       style="width: 100%; padding: 8px;">
-            </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label>판매가 *</label>
-                <input type="number" id="productModalSalePrice" value="${product.sale_price}"
-                       style="width: 100%; padding: 8px;">
+
+            <div style="margin-bottom: 15px; padding: 15px; background: #e8f4f8; border-radius: 5px;">
+                <label style="font-weight: bold;">선적 관리</label>
+                <button type="button" onclick="loadProductShipments(${productId})" 
+                        style="margin-left: 10px; padding: 5px 10px; background: #17a2b8; color: white; border: none; border-radius: 3px;">
+                    선적 목록 보기
+                </button>
+                <div id="shipmentListContainer" style="margin-top: 10px;">
+                    <!-- 선적 목록 표시 영역 -->
+                </div>
             </div>
             
             <!-- 메인 썸네일만 -->
@@ -780,6 +772,17 @@ async function saveProduct() {
     if (!tempSelectedSeller && !editingProductId) {
         alert('공급사를 선택해주세요.');
         return;
+    }
+
+        // productData 객체 생성 후 추가
+    if (!editingProductId && tempShipments.length === 0) {
+        alert('최소 1개 이상의 선적 정보를 입력해주세요.');
+        return;
+    }
+
+    // 선적 정보를 JSON 문자열로 변환
+    if (tempShipments.length > 0) {
+        productData.shipments = JSON.stringify(tempShipments);
     }
     
     // 로딩 오버레이 생성
@@ -1124,61 +1127,17 @@ async function toggleProductStatus(productId, currentStatus) {
 
 // ===== 재고 관리 모달 =====
 function openStockManageModal(productId) {
-    const product = allProducts.find(p => p.id === productId);
-    if (!product) return;
-
-    const currentStock = product.current_stock !== undefined ? product.current_stock : product.initial_stock;
-
-    const modalHTML = `
-        <div style="padding: 20px;">
-            <h3>${product.name} - 재고 관리</h3>
-            <div style="margin-bottom: 10px;">
-                <span style="color: #666;">초기 재고: ${product.initial_stock}개</span><br>
-                <span style="color: #007bff; font-weight: bold;">현재 재고: ${currentStock}개</span>
-            </div>
-            
-            <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                <div style="margin-bottom: 15px;">
-                    <label style="display: inline-block; width: 100px;">
-                        <input type="radio" name="stockType" value="add" checked> 입고 (+)
-                    </label>
-                    <label style="display: inline-block; width: 100px;">
-                        <input type="radio" name="stockType" value="subtract"> 출고 (-)
-                    </label>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">수량</label>
-                    <input type="number" id="stockQuantity" min="1" value="1"
-                           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">사유/메모</label>
-                    <textarea id="stockMemo" rows="3"
-                              style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
-                              placeholder="입고/출고 사유를 입력하세요"></textarea>
-                </div>
-            </div>
-            
-            <p style="color: #dc3545; font-size: 12px;">
-                ⚠️ 재고 조정은 취소할 수 없습니다. 신중하게 입력해주세요.
-            </p>
-        </div>
-    `;
-    
-    const footerHTML = `
-        <button onclick="saveStockAdjustment(${productId})" style="background: #007bff; color: white;">저장</button>
-        <button onclick="closeModal()" style="background: #6c757d; color: white;">취소</button>
-    `;
+    // 선적 관리로 리다이렉트
+    loadProductShipments(productId);
     
     window.openModal({
-        title: '재고 관리',
-        bodyHTML: modalHTML,
-        footerHTML: footerHTML
+        title: '선적 관리',
+        bodyHTML: '<div id="shipmentListContainer" style="padding: 20px;"></div>',
+        footerHTML: '<button onclick="closeModal()">닫기</button>'
     });
+    
+    loadProductShipments(productId);
 }
-
 // ===== 재고 조정 저장 =====
 async function saveStockAdjustment(productId) {
     const stockType = document.querySelector('input[name="stockType"]:checked').value;
@@ -1716,6 +1675,157 @@ function collectMappingData() {
     
     return mappings;
 }
+
+// ===== 선적 관리 함수들 =====
+function openAddShipmentModal() {
+    const modalHTML = `
+        <div style="padding: 20px;">
+            <h4>선적 추가</h4>
+            <div style="margin-bottom: 15px;">
+                <label>선적명 *</label>
+                <input type="text" id="shipmentName" placeholder="예: 1차, 2025년 상반기">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>입고일</label>
+                <input type="date" id="shipmentDate" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>수량 *</label>
+                <input type="number" id="shipmentQty" min="1" value="1">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>공급가 *</label>
+                <input type="number" id="shipmentSupply" min="0" step="0.01">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>판매가 *</label>
+                <input type="number" id="shipmentSale" min="0" step="0.01">
+            </div>
+        </div>
+    `;
+    
+    // 서브 모달 생성
+    const subModal = document.createElement('div');
+    subModal.id = 'shipmentModal';
+    subModal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5); z-index: 2000;
+        display: flex; align-items: center; justify-content: center;
+    `;
+    subModal.innerHTML = `
+        <div style="background: white; border-radius: 8px; width: 500px; max-width: 90%;">
+            <div style="padding: 15px; border-bottom: 1px solid #ddd;">
+                <h3 style="margin: 0;">선적 정보 입력</h3>
+            </div>
+            <div>${modalHTML}</div>
+            <div style="padding: 15px; text-align: right; border-top: 1px solid #ddd;">
+                <button onclick="saveShipmentTemp()" style="background: #28a745; color: white; padding: 8px 15px; border: none; border-radius: 4px;">추가</button>
+                <button onclick="closeShipmentModal()" style="background: #6c757d; color: white; padding: 8px 15px; border: none; border-radius: 4px; margin-left: 10px;">취소</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(subModal);
+}
+
+function saveShipmentTemp() {
+    const name = document.getElementById('shipmentName').value.trim();
+    const date = document.getElementById('shipmentDate').value;
+    const qty = parseInt(document.getElementById('shipmentQty').value);
+    const supply = parseFloat(document.getElementById('shipmentSupply').value);
+    const sale = parseFloat(document.getElementById('shipmentSale').value);
+    
+    if (!name || !qty || !supply || !sale) {
+        alert('필수 항목을 모두 입력해주세요.');
+        return;
+    }
+    
+    tempShipments.push({
+        shipment_no: name,
+        arrival_date: date,
+        quantity: qty,
+        supply_price: supply,
+        sale_price: sale
+    });
+    
+    renderShipmentList();
+    closeShipmentModal();
+}
+
+function renderShipmentList() {
+    const container = document.getElementById('shipmentListContainer');
+    if (!container) return;
+    
+    if (tempShipments.length === 0) {
+        container.innerHTML = '<p style="color: #999;">선적 정보가 없습니다.</p>';
+        return;
+    }
+    
+    container.innerHTML = tempShipments.map((ship, idx) => `
+        <div style="padding: 10px; margin: 5px 0; background: white; border: 1px solid #ddd; border-radius: 3px;">
+            <strong>${ship.shipment_no}</strong> - 
+            수량: ${ship.quantity}개, 
+            공급가: $${ship.supply_price}, 
+            판매가: $${ship.sale_price}
+            <button onclick="removeShipmentTemp(${idx})" style="float: right; color: red; border: none; background: none;">삭제</button>
+        </div>
+    `).join('');
+}
+
+function removeShipmentTemp(index) {
+    tempShipments.splice(index, 1);
+    renderShipmentList();
+}
+
+function closeShipmentModal() {
+    const modal = document.getElementById('shipmentModal');
+    if (modal) modal.remove();
+}
+
+async function loadProductShipments(productId) {
+    try {
+        const response = await fetch(`/api/products/${productId}/shipments`, {
+            headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
+        });
+        
+        if (response.ok) {
+            const shipments = await response.json();
+            displayShipmentsList(shipments);
+        }
+    } catch (error) {
+        console.error('선적 목록 로드 실패:', error);
+    }
+}
+
+function displayShipmentsList(shipments) {
+    const container = document.getElementById('shipmentListContainer');
+    if (!container) return;
+    
+    if (shipments.length === 0) {
+        container.innerHTML = '<p style="color: #999;">등록된 선적이 없습니다.</p>';
+        return;
+    }
+    
+    container.innerHTML = shipments.map(ship => `
+        <div style="padding: 10px; margin: 5px 0; background: white; border: 1px solid #ddd; border-radius: 3px;">
+            <strong>${ship.shipment_no}</strong> (${ship.arrival_date})
+            <br>재고: ${ship.remaining_quantity}/${ship.initial_quantity}개
+            <br>공급가: $${ship.supply_price}, 판매가: $${ship.sale_price}
+            <div style="margin-top: 5px;">
+                <button onclick="openShipmentPriceModal(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #007bff; color: white; border: none; border-radius: 3px;">가격수정</button>
+                <button onclick="openShipmentStockModal(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; margin-left: 5px;">재고조정</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 전역 함수 등록
+window.openAddShipmentModal = openAddShipmentModal;
+window.saveShipmentTemp = saveShipmentTemp;
+window.renderShipmentList = renderShipmentList;
+window.removeShipmentTemp = removeShipmentTemp;
+window.closeShipmentModal = closeShipmentModal;
+window.loadProductShipments = loadProductShipments;
+window.displayShipmentsList = displayShipmentsList;
 
 
 // 전역 함수로 노출
