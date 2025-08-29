@@ -745,7 +745,6 @@ async function saveProduct() {
     // DOM 요소 확인
     const nameEl = document.getElementById('productModalName');
     const codeEl = document.getElementById('productModalCode');
-    const stockEl = document.getElementById('productModalStock');
     const supplyPriceEl = document.getElementById('productModalSupplyPrice');
     const salePriceEl = document.getElementById('productModalSalePrice');
     const thumbnailEl = document.getElementById('productModalThumbnail');
@@ -758,7 +757,6 @@ async function saveProduct() {
     
     const name = nameEl.value.trim();
     const productCode = codeEl.value.trim();
-    const initialStock = stockEl?.value || 0;
     const thumbnailFile = thumbnailEl?.files?.[0];
     const detailImageFile = detailEl?.files?.[0];
     // 유효성 검사
@@ -779,7 +777,8 @@ async function saveProduct() {
     }
     let supplyPrice = 0;
     let salePrice = 0;
-    
+    let initialStock = 0; 
+
     if (tempShipments.length > 0) {
         supplyPrice = tempShipments[0].supply_price;
         salePrice = tempShipments[0].sale_price;
