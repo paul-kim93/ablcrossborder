@@ -2134,9 +2134,52 @@ async function viewPriceHistory(shipmentId) {
         alert('이력 조회 실패');
     }
 }
-
 async function viewStockHistory(shipmentId) {
-    // 유사한 구조로 재고 이력 표시
+    try {
+        const response = await fetch(`/api/shipments/${shipmentId}/stock-history`, {
+            headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
+        });
+        const history = await response.json();
+        
+        let html = `
+            <div style="padding: 20px; max-height: 60vh; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 8px; border: 1px solid #ddd;">조정일시</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">구분</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">수량</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">사유</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+        
+        if (history.length === 0) {
+            html += '<tr><td colspan="4" style="text-align: center; padding: 20px;">조정 이력이 없습니다.</td></tr>';
+        } else {
+            history.forEach(item => {
+                const typeText = item.adjustment_type === 'add' ? '추가' : '차감';
+                const typeColor = item.adjustment_type === 'add' ? 'green' : 'red';
+                html += `
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${new Date(item.created_at).toLocaleString('ko-KR')}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; color: ${typeColor};">${typeText}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${item.quantity}개</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${item.reason || '-'}</td>
+                    </tr>`;
+            });
+        }
+        
+        html += '</tbody></table></div>';
+        
+        window.openModal({
+            title: '재고 조정 이력',
+            bodyHTML: html,
+            footerHTML: '<button onclick="closeModal()">닫기</button>'
+        });
+    } catch (error) {
+        alert('이력 조회 실패');
+    }
 }
 
 // 전역 등록

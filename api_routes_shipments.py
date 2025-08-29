@@ -183,7 +183,13 @@ def get_shipment_price_history(
         ShipmentPriceHistory.shipment_id == shipment_id
     ).order_by(ShipmentPriceHistory.created_at.desc()).all()
     
-    return [...]
+    return [{
+        "supply_price": float(h.supply_price),
+        "sale_price": float(h.sale_price),
+        "reason": h.reason,
+        "effective_date": h.effective_date.isoformat() if h.effective_date else None,
+        "created_at": h.created_at.isoformat() if h.created_at else None
+    } for h in history]
 
 @router.get("/shipments/{shipment_id}/stock-history")
 def get_shipment_stock_history(
@@ -196,4 +202,9 @@ def get_shipment_stock_history(
         ShipmentStockAdjustments.shipment_id == shipment_id
     ).order_by(ShipmentStockAdjustments.created_at.desc()).all()
     
-    return [...]
+    return [{
+        "adjustment_type": a.adjustment_type,
+        "quantity": a.quantity,
+        "reason": a.reason,
+        "created_at": a.created_at.isoformat() if a.created_at else None
+    } for a in adjustments]
