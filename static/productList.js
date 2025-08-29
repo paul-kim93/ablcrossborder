@@ -759,13 +759,17 @@ async function saveProduct() {
     const name = nameEl.value.trim();
     const productCode = codeEl.value.trim();
     const initialStock = stockEl?.value || 0;
-    const supplyPrice = supplyPriceEl?.value;
-    const salePrice = salePriceEl?.value;
     const thumbnailFile = thumbnailEl?.files?.[0];
     const detailImageFile = detailEl?.files?.[0];
     // 유효성 검사
-    if (!name || !productCode || !supplyPrice || !salePrice) {
-        alert('필수 항목을 모두 입력해주세요.');
+   // 선적 체크로 변경
+    if (!name || !productCode) {
+        alert('제품명과 제품코드는 필수입니다.');
+        return;
+    }
+
+    if (!editingProductId && tempShipments.length === 0) {
+        alert('최소 1개 이상의 선적 정보를 입력해주세요.');
         return;
     }
     
@@ -773,17 +777,15 @@ async function saveProduct() {
         alert('공급사를 선택해주세요.');
         return;
     }
-
-        // productData 객체 생성 후 추가
-    if (!editingProductId && tempShipments.length === 0) {
-        alert('최소 1개 이상의 선적 정보를 입력해주세요.');
-        return;
-    }
-
-    // 선적 정보를 JSON 문자열로 변환
+    let supplyPrice = 0;
+    let salePrice = 0;
+    
     if (tempShipments.length > 0) {
-        productData.shipments = JSON.stringify(tempShipments);
+        supplyPrice = tempShipments[0].supply_price;
+        salePrice = tempShipments[0].sale_price;
+        initialStock = tempShipments.reduce((sum, s) => sum + s.quantity, 0);
     }
+    
     
     // 로딩 오버레이 생성
     const loadingOverlay = document.createElement('div');
@@ -823,14 +825,15 @@ async function saveProduct() {
     
     try {
         let productData = {
-            name: name,
-            product_code: productCode,
-            initial_stock: parseInt(initialStock) || 0,
-            supply_price: parseFloat(supplyPrice),
-            sale_price: parseFloat(salePrice)
-        };
-        
-        let savedProductId;  // 제품 ID 저장용
+         name: name,
+          product_code: productCode,
+          initial_stock: initialStock || 0,
+         supply_price: supplyPrice || 0,
+          sale_price: salePrice || 0,
+          shipments: tempShipments.length > 0 ? JSON.stringify(tempShipments) : null // 선적 정보
+     };
+    
+        let savedProductId;
         
         if (editingProductId) {
             // === 수정 모드 ===
