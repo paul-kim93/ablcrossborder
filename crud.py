@@ -1,6 +1,5 @@
 import os
 import pytz
-from datetime import datetime, timedelta
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
@@ -52,7 +51,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 # === 통계 관련 헬퍼 함수 ===
-from datetime import datetime, timedelta
+
 
 def get_week_start(date):
     """주어진 날짜의 해당 주 월요일 반환"""
