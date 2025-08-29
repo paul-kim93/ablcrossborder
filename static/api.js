@@ -286,7 +286,12 @@ window.API = {
 window.uploadToImageKit = async function(file, productId, imageType = 'thumbnail') {
     try {
         // 1. 서버에서 인증 정보 가져오기
-        const authResponse = await fetch(`${window.API_BASE_URL}/api/imagekit/auth`);
+        const authResponse = await fetch(`${window.API_BASE_URL}/api/imagekit/auth`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
         if (!authResponse.ok) {
             throw new Error('인증 정보 가져오기 실패');
         }
