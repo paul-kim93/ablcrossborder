@@ -239,11 +239,6 @@ class ProductCodeMapping(Base):
     note = Column(String(255), nullable=True)
     created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
-
-
-# 선적 관리 시스템 모델
-from sqlalchemy import Date  # 상단 import에 추가
-
 class ProductShipment(Base):
     __tablename__ = 'product_shipments'
     
@@ -254,8 +249,8 @@ class ProductShipment(Base):
     initial_quantity = Column(Integer)
     current_quantity = Column(Integer)
     remaining_quantity = Column(Integer)
-    supply_price = Column(DECIMAL(18, 2))
-    sale_price = Column(DECIMAL(18, 2))
+    supply_price = Column(Numeric(18, 2))
+    sale_price = Column(Numeric(18, 2))
     is_active = Column(Integer, default=1)
     created_by = Column(Integer, ForeignKey('accounts.id'))
     created_at = Column(DateTime)
@@ -266,8 +261,8 @@ class ShipmentPriceHistory(Base):
     
     id = Column(Integer, primary_key=True)
     shipment_id = Column(Integer, ForeignKey('product_shipments.id'))
-    supply_price = Column(DECIMAL(18, 2))
-    sale_price = Column(DECIMAL(18, 2))
+    supply_price = Column(Numeric(18, 2))
+    sale_price = Column(Numeric(18, 2))
     effective_date = Column(Date)
     reason = Column(String(255))
     changed_by = Column(Integer, ForeignKey('accounts.id'))
