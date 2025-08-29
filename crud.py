@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
+from datetime import datetime, timedelta, timezone
 
 from models import (
     DashboardSummary, Order, OrderItem, 
@@ -18,14 +19,14 @@ def get_korea_time():
 
 def get_korea_time_naive():
     """한국시간 반환 (타임존 제거 - DB 저장용)"""
-    from datetime import datetime, timedelta
-    # Railway DB는 UTC이므로 우리가 +9시간 계산#
+    
+    # Railway DB는 UTC이므로 우리가 +9시간 계산
     return datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=9)
 
 def get_china_time_naive():
     """중국시간 반환 (타임존 제거 - DB 저장용)"""
     # 중국은 UTC+8
-    return datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
+    return datetime.utcnow()  # DB가 알아서 변환
 
 # === 주문 상태 매핑 ===
 ORDER_STATUS_MAP = {
