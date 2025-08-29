@@ -155,19 +155,25 @@ async def delete_from_imagekit(url: str = Form(...)):
 async def get_imagekit_auth(current_account: Account = Depends(get_current_account)):
     """ImageKit 업로드 인증 정보 반환"""
     
-    # 환경변수 체크
-    if not IMAGEKIT_PRIVATE_KEY or not IMAGEKIT_PUBLIC_KEY:
-        raise HTTPException(status_code=500, detail="ImageKit not configured")
-    
     try:
         auth_params = imagekit.get_authentication_parameters()
         
-        return {
-            "token": auth_params.token,
-            "expire": auth_params.expire,
-            "signature": auth_params.signature,
-            "publicKey": IMAGEKIT_PUBLIC_KEY
-        }
+        # dict로 반환되는 경우 처리
+        if isinstance(auth_params, dict):
+            return {
+                "token": auth_params['token'],
+                "expire": auth_params['expire'],
+                "signature": auth_params['signature'],
+                "publicKey": IMAGEKIT_PUBLIC_KEY
+            }
+        else:
+            # 객체로 반환되는 경우
+            return {
+                "token": auth_params.token,
+                "expire": auth_params.expire,
+                "signature": auth_params.signature,
+                "publicKey": IMAGEKIT_PUBLIC_KEY
+            }
     except Exception as e:
         print(f"ImageKit 인증 에러: {e}")
         raise HTTPException(status_code=500, detail=str(e))
