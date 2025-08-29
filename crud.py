@@ -683,3 +683,25 @@ def find_product_and_multiplier(db: Session, product_code: str):
         return product, mapping.quantity_multiplier
     
     return None, 1
+
+def get_price_at_date(db: Session, product_id: int, order_date):
+    """특정 날짜의 제품 가격 조회"""
+    from models import ProductPriceHistory, Product
+    from decimal import Decimal
+    
+    if hasattr(order_date, 'date'):
+        order_date = order_date.date()
+    
+    price = db.query(ProductPriceHistory).filter(
+        ProductPriceHistory.product_id == product_id,
+        ProductPriceHistory.effective_date <= order_date
+    ).order_by(ProductPriceHistory.effective_date.desc()).first()
+    
+    if price:
+        return price.supply_price, price.sale_price
+    
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if product:
+        return product.supply_price, product.sale_price
+    
+    return Decimal('0'), Decimal('0')

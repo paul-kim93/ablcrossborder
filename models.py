@@ -238,3 +238,16 @@ class ProductCodeMapping(Base):
     mapping_type = Column(String(20), default='alias')
     note = Column(String(255), nullable=True)
     created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
+
+class ProductPriceHistory(Base):
+    __tablename__ = 'product_price_history'
+    
+    id = Column(Integer, primary_key=True)
+    product_id = Column(Integer, ForeignKey('products.id'))
+    supply_price = Column(DECIMAL(18, 2))
+    sale_price = Column(DECIMAL(18, 2))
+    effective_date = Column(Date)
+    change_by = Column(Integer, ForeignKey('accounts.id'))  # DB 컬럼명과 일치
+    created_at = Column(DateTime)

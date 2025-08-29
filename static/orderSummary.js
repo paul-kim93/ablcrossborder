@@ -13,7 +13,10 @@ let allSellersForOrders = []; // 입점사 목록 추가
 let totalOrderCount = 0;  // 전체 주문 개수 저장용 - 새로 추가!
 let currentSearchKeyword = '';  // 현재 검색어 저장 - 새로 추가!
 let currentStatusFilter = '';  // 현재 상태 필터 저장 - 새로 추가!
+window.selectedProductIds = window.selectedProductIds || new Set();
+
 // 전역 변수 초기화 (안전하게 처리)
+
 if (typeof window.selectedProductIds === 'undefined') {
     window.selectedProductIds = new Set();
 }
