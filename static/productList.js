@@ -1819,6 +1819,187 @@ function displayShipmentsList(shipments) {
         </div>
     `).join('');
 }
+// 선적 가격 수정 모달
+function openShipmentPriceModal(shipmentId) {
+    const modalHTML = `
+        <div style="padding: 20px;">
+            <h4>선적 가격 수정</h4>
+            <div style="margin-bottom: 15px;">
+                <label>공급가 *</label>
+                <input type="number" id="editSupplyPrice" min="0" step="0.01">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>판매가 *</label>
+                <input type="number" id="editSalePrice" min="0" step="0.01">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>변경 사유</label>
+                <input type="text" id="editReason" placeholder="가격 변경 사유">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>적용일</label>
+                <input type="date" id="editEffectiveDate" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+        </div>
+    `;
+    
+    const subModal = document.createElement('div');
+    subModal.id = 'priceModal';
+    subModal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5); z-index: 2000;
+        display: flex; align-items: center; justify-content: center;
+    `;
+    subModal.innerHTML = `
+        <div style="background: white; border-radius: 8px; width: 500px; max-width: 90%;">
+            <div style="padding: 15px; border-bottom: 1px solid #ddd;">
+                <h3 style="margin: 0;">가격 수정</h3>
+            </div>
+            <div>${modalHTML}</div>
+            <div style="padding: 15px; text-align: right; border-top: 1px solid #ddd;">
+                <button onclick="saveShipmentPrice(${shipmentId})" style="background: #007bff; color: white; padding: 8px 15px; border: none; border-radius: 4px;">저장</button>
+                <button onclick="closePriceModal()" style="background: #6c757d; color: white; padding: 8px 15px; border: none; border-radius: 4px; margin-left: 10px;">취소</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(subModal);
+}
+
+// 선적 재고 조정 모달
+function openShipmentStockModal(shipmentId) {
+    const modalHTML = `
+        <div style="padding: 20px;">
+            <h4>선적 재고 조정</h4>
+            <div style="margin-bottom: 15px;">
+                <label>
+                    <input type="radio" name="adjustType" value="add" checked> 추가
+                </label>
+                <label style="margin-left: 20px;">
+                    <input type="radio" name="adjustType" value="subtract"> 차감
+                </label>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>수량 *</label>
+                <input type="number" id="adjustQuantity" min="1" value="1">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>사유 *</label>
+                <input type="text" id="adjustReason" placeholder="재고 조정 사유">
+            </div>
+        </div>
+    `;
+    
+    const subModal = document.createElement('div');
+    subModal.id = 'stockModal';
+    subModal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5); z-index: 2000;
+        display: flex; align-items: center; justify-content: center;
+    `;
+    subModal.innerHTML = `
+        <div style="background: white; border-radius: 8px; width: 500px; max-width: 90%;">
+            <div style="padding: 15px; border-bottom: 1px solid #ddd;">
+                <h3 style="margin: 0;">재고 조정</h3>
+            </div>
+            <div>${modalHTML}</div>
+            <div style="padding: 15px; text-align: right; border-top: 1px solid #ddd;">
+                <button onclick="saveShipmentStock(${shipmentId})" style="background: #17a2b8; color: white; padding: 8px 15px; border: none; border-radius: 4px;">저장</button>
+                <button onclick="closeStockModal()" style="background: #6c757d; color: white; padding: 8px 15px; border: none; border-radius: 4px; margin-left: 10px;">취소</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(subModal);
+}
+
+// 가격 저장
+async function saveShipmentPrice(shipmentId) {
+    const supply = document.getElementById('editSupplyPrice').value;
+    const sale = document.getElementById('editSalePrice').value;
+    const reason = document.getElementById('editReason').value;
+    const date = document.getElementById('editEffectiveDate').value;
+    
+    if (!supply || !sale) {
+        alert('가격을 입력해주세요.');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('supply_price', supply);
+    formData.append('sale_price', sale);
+    formData.append('reason', reason || '가격 수정');
+    formData.append('effective_date', date);
+    
+    try {
+        const response = await fetch(`/api/shipments/${shipmentId}/price`, {
+            method: 'PUT',
+            headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`},
+            body: formData
+        });
+        
+        if (response.ok) {
+            alert('가격이 수정되었습니다.');
+            closePriceModal();
+            // 목록 새로고침
+            const productId = editingProductId;
+            if (productId) loadProductShipments(productId);
+        }
+    } catch (error) {
+        alert('가격 수정 실패: ' + error.message);
+    }
+}
+
+// 재고 저장
+async function saveShipmentStock(shipmentId) {
+    const type = document.querySelector('input[name="adjustType"]:checked').value;
+    const quantity = document.getElementById('adjustQuantity').value;
+    const reason = document.getElementById('adjustReason').value;
+    
+    if (!quantity || !reason) {
+        alert('수량과 사유를 입력해주세요.');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('adjustment_type', type);
+    formData.append('quantity', quantity);
+    formData.append('reason', reason);
+    
+    try {
+        const response = await fetch(`/api/shipments/${shipmentId}/adjust-stock`, {
+            method: 'POST',
+            headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`},
+            body: formData
+        });
+        
+        if (response.ok) {
+            alert('재고가 조정되었습니다.');
+            closeStockModal();
+            // 목록 새로고침
+            const productId = editingProductId;
+            if (productId) loadProductShipments(productId);
+        }
+    } catch (error) {
+        alert('재고 조정 실패: ' + error.message);
+    }
+}
+
+function closePriceModal() {
+    const modal = document.getElementById('priceModal');
+    if (modal) modal.remove();
+}
+
+function closeStockModal() {
+    const modal = document.getElementById('stockModal');
+    if (modal) modal.remove();
+}
+
+// 전역 함수 등록
+window.openShipmentPriceModal = openShipmentPriceModal;
+window.openShipmentStockModal = openShipmentStockModal;
+window.saveShipmentPrice = saveShipmentPrice;
+window.saveShipmentStock = saveShipmentStock;
+window.closePriceModal = closePriceModal;
+window.closeStockModal = closeStockModal;
 
 // 전역 함수 등록
 window.openAddShipmentModal = openAddShipmentModal;
