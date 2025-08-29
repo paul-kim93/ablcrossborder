@@ -1819,7 +1819,7 @@ function displayShipmentsList(shipments) {
             <div style="margin-top: 5px;">
                 <button onclick="openShipmentPriceModal(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #007bff; color: white; border: none; border-radius: 3px;">가격수정</button>
                 <button onclick="openShipmentStockModal(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; margin-left: 5px;">재고조정</button>
-                <button onclick="viewPriceHistory(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #6c757d; color: white; border: none; border-radius: 3px; margin-left: 5px;">가격이력</button>
+                <button onclick="viewShipmentPriceHistory(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #6c757d; color: white; border: none; border-radius: 3px; margin-left: 5px;">가격이력</button>
                 <button onclick="viewStockHistory(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #6c757d; color: white; border: none; border-radius: 3px; margin-left: 5px;">재고이력</button>
                 
             
@@ -2093,7 +2093,7 @@ function closeNewShipmentModal() {
 }
 
 // === 선적 이력 조회 함수 ===
-async function viewPriceHistory(shipmentId) {
+async function viewShipmentPriceHistory(shipmentId) {
     try {
         const response = await fetch(`/api/shipments/${shipmentId}/price-history`, {
             headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
@@ -2183,7 +2183,7 @@ async function viewStockHistory(shipmentId) {
 }
 
 // 전역 등록
-window.viewPriceHistory = viewPriceHistory;
+window.viewShipmentPriceHistory = viewShipmentPriceHistory;
 window.viewStockHistory = viewStockHistory;
 
 
