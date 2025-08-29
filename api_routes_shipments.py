@@ -200,7 +200,7 @@ def get_shipment_stock_history(
     """선적 재고 조정 이력 조회"""
     adjustments = db.query(ShipmentStockAdjustment).filter(
         ShipmentStockAdjustment.shipment_id == shipment_id
-    ).order_by(ShipmentStockAdjustments.created_at.desc()).all()
+    ).order_by(ShipmentStockAdjustment.created_at.desc()).all()
     
     return [{
         "adjustment_type": a.adjustment_type,
