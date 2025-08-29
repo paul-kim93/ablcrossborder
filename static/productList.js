@@ -536,15 +536,19 @@ async function openEditProductModal(productId) {
 
             <div style="margin-bottom: 15px; padding: 15px; background: #e8f4f8; border-radius: 5px;">
                 <label style="font-weight: bold;">선적 관리</label>
+                <button type="button" onclick="openAddShipmentModalForEdit(${productId})" 
+                        style="margin-left: 10px; padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px;">
+                    + 선적 추가
+                </button>
                 <button type="button" onclick="loadProductShipments(${productId})" 
-                        style="margin-left: 10px; padding: 5px 10px; background: #17a2b8; color: white; border: none; border-radius: 3px;">
+                        style="margin-left: 5px; padding: 5px 10px; background: #17a2b8; color: white; border: none; border-radius: 3px;">
                     선적 목록 보기
                 </button>
                 <div id="shipmentListContainer" style="margin-top: 10px;">
                     <!-- 선적 목록 표시 영역 -->
                 </div>
             </div>
-            
+                        
             <!-- 메인 썸네일만 -->
             <div style="margin-bottom: 15px;">
                 <label>메인 썸네일 (리스트 표시용)</label>
@@ -1992,6 +1996,101 @@ function closeStockModal() {
     const modal = document.getElementById('stockModal');
     if (modal) modal.remove();
 }
+
+// 수정 모드에서 선적 직접 추가
+async function openAddShipmentModalForEdit(productId) {
+    const modalHTML = `
+        <div style="padding: 20px;">
+            <h4>새 선적 추가</h4>
+            <div style="margin-bottom: 15px;">
+                <label>선적명 *</label>
+                <input type="text" id="newShipmentName" placeholder="예: 추가입고">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>입고일</label>
+                <input type="date" id="newShipmentDate" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>수량 *</label>
+                <input type="number" id="newShipmentQty" min="1" value="1">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>공급가 *</label>
+                <input type="number" id="newShipmentSupply" min="0" step="0.01">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>판매가 *</label>
+                <input type="number" id="newShipmentSale" min="0" step="0.01">
+            </div>
+        </div>
+    `;
+    
+    const subModal = document.createElement('div');
+    subModal.id = 'newShipmentModal';
+    subModal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5); z-index: 2000;
+        display: flex; align-items: center; justify-content: center;
+    `;
+    subModal.innerHTML = `
+        <div style="background: white; border-radius: 8px; width: 500px; max-width: 90%;">
+            <div style="padding: 15px; border-bottom: 1px solid #ddd;">
+                <h3 style="margin: 0;">선적 추가</h3>
+            </div>
+            <div>${modalHTML}</div>
+            <div style="padding: 15px; text-align: right; border-top: 1px solid #ddd;">
+                <button onclick="saveNewShipmentDirect(${productId})" style="background: #28a745; color: white; padding: 8px 15px; border: none; border-radius: 4px;">추가</button>
+                <button onclick="closeNewShipmentModal()" style="background: #6c757d; color: white; padding: 8px 15px; border: none; border-radius: 4px; margin-left: 10px;">취소</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(subModal);
+}
+
+async function saveNewShipmentDirect(productId) {
+    const name = document.getElementById('newShipmentName').value.trim();
+    const date = document.getElementById('newShipmentDate').value;
+    const qty = parseInt(document.getElementById('newShipmentQty').value);
+    const supply = parseFloat(document.getElementById('newShipmentSupply').value);
+    const sale = parseFloat(document.getElementById('newShipmentSale').value);
+    
+    if (!name || !qty || !supply || !sale) {
+        alert('필수 항목을 모두 입력해주세요.');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('shipment_no', name);
+    formData.append('arrival_date', date);
+    formData.append('quantity', qty);
+    formData.append('supply_price', supply);
+    formData.append('sale_price', sale);
+    
+    try {
+        const response = await fetch(`/api/products/${productId}/shipments`, {
+            method: 'POST',
+            headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`},
+            body: formData
+        });
+        
+        if (response.ok) {
+            alert('선적이 추가되었습니다.');
+            closeNewShipmentModal();
+            loadProductShipments(productId);
+        }
+    } catch (error) {
+        alert('선적 추가 실패: ' + error.message);
+    }
+}
+
+function closeNewShipmentModal() {
+    const modal = document.getElementById('newShipmentModal');
+    if (modal) modal.remove();
+}
+
+window.openAddShipmentModalForEdit = openAddShipmentModalForEdit;
+window.saveNewShipmentDirect = saveNewShipmentDirect;
+window.closeNewShipmentModal = closeNewShipmentModal;
 
 // 전역 함수 등록
 window.openShipmentPriceModal = openShipmentPriceModal;
