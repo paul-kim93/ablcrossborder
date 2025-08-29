@@ -198,8 +198,8 @@ def get_shipment_stock_history(
     current: Account = Depends(get_current_account)
 ):
     """선적 재고 조정 이력 조회"""
-    adjustments = db.query(ShipmentStockAdjustments).filter(
-        ShipmentStockAdjustments.shipment_id == shipment_id
+    adjustments = db.query(ShipmentStockAdjustment).filter(
+        ShipmentStockAdjustment.shipment_id == shipment_id
     ).order_by(ShipmentStockAdjustments.created_at.desc()).all()
     
     return [{
