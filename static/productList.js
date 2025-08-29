@@ -1820,7 +1820,7 @@ function displayShipmentsList(shipments) {
                 <button onclick="openShipmentPriceModal(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #007bff; color: white; border: none; border-radius: 3px;">가격수정</button>
                 <button onclick="openShipmentStockModal(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; margin-left: 5px;">재고조정</button>
                 <button onclick="viewShipmentPriceHistory(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #6c757d; color: white; border: none; border-radius: 3px; margin-left: 5px;">가격이력</button>
-                <button onclick="viewStockHistory(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #6c757d; color: white; border: none; border-radius: 3px; margin-left: 5px;">재고이력</button>
+                <button onclick="viewShipmentStockHistory(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #6c757d; color: white; border: none; border-radius: 3px; margin-left: 5px;">재고이력</button>
                 
             
                 </div>
@@ -2100,6 +2100,15 @@ async function viewShipmentPriceHistory(shipmentId) {
         });
         const history = await response.json();
         
+        // 서브 모달 생성 (z-index 3000으로 설정하여 메인 모달 위에 표시)
+        const subModal = document.createElement('div');
+        subModal.id = 'priceHistoryModal';
+        subModal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 3000;
+            display: flex; align-items: center; justify-content: center;
+        `;
+        
         let html = `
             <div style="padding: 20px; max-height: 60vh; overflow-y: auto;">
                 <table style="width: 100%; border-collapse: collapse;">
@@ -2130,37 +2139,45 @@ async function viewShipmentPriceHistory(shipmentId) {
             bodyHTML: html,
             footerHTML: '<button onclick="closeModal()">닫기</button>'
         });
+    document.body.appendChild(subModal);
     } catch (error) {
-        alert('이력 조회 실패');
+        alert('가격 이력 조회 실패');
     }
 }
-async function viewStockHistory(shipmentId) {
+async function viewShipmentStockHistory(shipmentId) {
     try {
         const response = await fetch(`/api/shipments/${shipmentId}/stock-history`, {
             headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
         });
         const history = await response.json();
         
-        let html = `
-            <div style="padding: 20px; max-height: 60vh; overflow-y: auto;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background: #f8f9fa;">
-                            <th style="padding: 8px; border: 1px solid #ddd;">조정일시</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">구분</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">수량</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">사유</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
+        // 서브 모달 생성
+        const subModal = document.createElement('div');
+        subModal.id = 'stockHistoryModal';
+        subModal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 3000;
+            display: flex; align-items: center; justify-content: center;
+        `;
+        
+        let tableHTML = `<table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f8f9fa;">
+                    <th style="padding: 8px; border: 1px solid #ddd;">조정일시</th>
+                    <th style="padding: 8px; border: 1px solid #ddd;">구분</th>
+                    <th style="padding: 8px; border: 1px solid #ddd;">수량</th>
+                    <th style="padding: 8px; border: 1px solid #ddd;">사유</th>
+                </tr>
+            </thead>
+            <tbody>`;
         
         if (history.length === 0) {
-            html += '<tr><td colspan="4" style="text-align: center; padding: 20px;">조정 이력이 없습니다.</td></tr>';
+            tableHTML += '<tr><td colspan="4" style="text-align: center; padding: 20px;">조정 이력이 없습니다.</td></tr>';
         } else {
             history.forEach(item => {
                 const typeText = item.adjustment_type === 'add' ? '추가' : '차감';
                 const typeColor = item.adjustment_type === 'add' ? 'green' : 'red';
-                html += `
+                tableHTML += `
                     <tr>
                         <td style="padding: 8px; border: 1px solid #ddd;">${new Date(item.created_at).toLocaleString('ko-KR')}</td>
                         <td style="padding: 8px; border: 1px solid #ddd; color: ${typeColor};">${typeText}</td>
@@ -2169,23 +2186,35 @@ async function viewStockHistory(shipmentId) {
                     </tr>`;
             });
         }
+        tableHTML += '</tbody></table>';
         
-        html += '</tbody></table></div>';
+        subModal.innerHTML = `
+            <div style="background: white; border-radius: 8px; width: 700px; max-width: 90%; max-height: 80vh;">
+                <div style="padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between;">
+                    <h3 style="margin: 0;">재고 조정 이력</h3>
+                    <button onclick="document.getElementById('stockHistoryModal').remove()" 
+                            style="background: none; border: none; font-size: 20px; cursor: pointer;">✕</button>
+                </div>
+                <div style="padding: 20px; max-height: 60vh; overflow-y: auto;">
+                    ${tableHTML}
+                </div>
+                <div style="padding: 15px; text-align: right; border-top: 1px solid #ddd;">
+                    <button onclick="document.getElementById('stockHistoryModal').remove()" 
+                            style="background: #6c757d; color: white; padding: 8px 15px; border: none; border-radius: 4px;">닫기</button>
+                </div>
+            </div>
+        `;
         
-        window.openModal({
-            title: '재고 조정 이력',
-            bodyHTML: html,
-            footerHTML: '<button onclick="closeModal()">닫기</button>'
-        });
+        document.body.appendChild(subModal);
     } catch (error) {
-        alert('이력 조회 실패');
+        console.error('재고 이력 조회 실패:', error);
+        alert('재고 이력 조회 실패');
     }
 }
 
 // 전역 등록
 window.viewShipmentPriceHistory = viewShipmentPriceHistory;
-window.viewStockHistory = viewStockHistory;
-
+window.viewShipmentStockHistory = viewShipmentStockHistory;
 
 window.openAddShipmentModalForEdit = openAddShipmentModalForEdit;
 window.saveNewShipmentDirect = saveNewShipmentDirect;
