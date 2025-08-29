@@ -18,8 +18,8 @@ def get_korea_time():
 
 def get_korea_time_naive():
     """한국시간 반환 (타임존 제거 - DB 저장용)"""
-   # from datetime import datetime, timedelta#
-    # Railway DB는 UTC이므로 우리가 +9시간 계산
+    from datetime import datetime, timedelta
+    # Railway DB는 UTC이므로 우리가 +9시간 계산#
     return datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=9)
 
 def get_china_time_naive():
