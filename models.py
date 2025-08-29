@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, ForeignKey, DateTime, Text, TIMESTAMP, Numeric
+    Column, Integer, String, ForeignKey, DateTime, Text, TIMESTAMP, Numeric, Date
 )
 from sqlalchemy.orm import relationship
     # NOTE: relationship은 필요한 곳만 설정
