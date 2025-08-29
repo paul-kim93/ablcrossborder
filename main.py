@@ -112,34 +112,6 @@ def health_check():
 
 from fastapi import Request  # 이거 추가!
 
-@app.get("/api/imagekit/auth")
-def get_imagekit_auth():
-    import time
-    
-    private_key = "private_a7o7oucjcWpmvmydF7yQBbZREdU="
-    
-    # UUID와 만료 시간
-    token = str(uuid.uuid4())
-    expire = str(int(time.time() + 1800))
-    
-    # ImageKit 공식: token과 expire를 단순 연결 (구분자 없음!)
-    auth_str = token + expire  # 중요: "+" 연결, "&" 없음!
-    
-    # HMAC-SHA1 서명
-    signature = hmac.new(
-        private_key.encode('utf-8'),
-        auth_str.encode('utf-8'),
-        hashlib.sha1
-    ).hexdigest()
-    
-    print(f"Auth String: {auth_str}")
-    print(f"Signature: {signature}")
-    
-    return {
-        "token": token,
-        "expire": expire,
-        "signature": signature
-    }
 
 @app.delete("/api/imagekit/delete")
 async def delete_from_imagekit(url: str = Form(...)):
@@ -152,7 +124,8 @@ async def delete_from_imagekit(url: str = Form(...)):
     file_path = '/'.join(parts[4:])  # products/detail_00_8_...
     
     # ImageKit API 호출
-    private_key = "private_a7o7oucjcWpmvmydF7yQBbZREdU="
+    private_key = IMAGEKIT_PRIVATE_KEY
+
     
     # 먼저 파일 검색
     search_url = f"https://api.imagekit.io/v1/files?path={file_path}"
