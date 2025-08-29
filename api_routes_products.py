@@ -80,11 +80,18 @@ async def create_product(
     db.flush()  # ID 생성
     
     # 선적 정보 저장
+    # 선적 정보 저장
     for ship_data in shipment_list:
+        # DateTime 처리로 변경
+        if ship_data.get('arrival_date'):
+            arrival = datetime.strptime(ship_data.get('arrival_date') + ' 00:00:00', '%Y-%m-%d %H:%M:%S')
+        else:
+            arrival = get_korea_time_naive()
+        
         shipment = ProductShipment(
             product_id=prod.id,
             shipment_no=ship_data.get('shipment_no', '초기재고'),
-            arrival_date=datetime.strptime(ship_data.get('arrival_date', str(datetime.now().date())), '%Y-%m-%d').date() if ship_data.get('arrival_date') else get_korea_time_naive().date(),
+            arrival_date=arrival,  # DateTime 타입으로 변경
             initial_quantity=ship_data.get('quantity', 0),
             current_quantity=ship_data.get('quantity', 0),
             remaining_quantity=ship_data.get('quantity', 0),

@@ -53,9 +53,9 @@ def add_shipment(
 ):
     # 날짜 처리
     if arrival_date:
-        arrival = datetime.strptime(arrival_date, '%Y-%m-%d').date()
+        arrival = datetime.strptime(arrival_date + ' 00:00:00', '%Y-%m-%d %H:%M:%S')
     else:
-        arrival = get_korea_time_naive().date()
+        arrival = get_korea_time_naive()
     
     shipment = ProductShipment(
         product_id=product_id,
@@ -106,9 +106,9 @@ def update_shipment_price(
     
     # 날짜 처리
     if effective_date:
-        eff_date = datetime.strptime(effective_date, '%Y-%m-%d').date()
+        eff_date = datetime.strptime(effective_date + ' 00:00:00', '%Y-%m-%d %H:%M:%S')
     else:
-        eff_date = datetime.now().date()
+        eff_date = get_korea_time_naive()
     
     # 가격 이력 저장
     history = ShipmentPriceHistory(
