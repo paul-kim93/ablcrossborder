@@ -55,7 +55,7 @@ def add_shipment(
     if arrival_date:
         arrival = datetime.strptime(arrival_date, '%Y-%m-%d').date()
     else:
-        arrival = datetime.now().date()
+        arrival = get_korea_time_naive().date()
     
     shipment = ProductShipment(
         product_id=product_id,

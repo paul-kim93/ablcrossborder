@@ -84,7 +84,7 @@ async def create_product(
         shipment = ProductShipment(
             product_id=prod.id,
             shipment_no=ship_data.get('shipment_no', '초기재고'),
-            arrival_date=datetime.strptime(ship_data.get('arrival_date', str(datetime.now().date())), '%Y-%m-%d').date() if ship_data.get('arrival_date') else datetime.now().date(),
+            arrival_date=datetime.strptime(ship_data.get('arrival_date', str(datetime.now().date())), '%Y-%m-%d').date() if ship_data.get('arrival_date') else get_korea_time_naive().date(),
             initial_quantity=ship_data.get('quantity', 0),
             current_quantity=ship_data.get('quantity', 0),
             remaining_quantity=ship_data.get('quantity', 0),

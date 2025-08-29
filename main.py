@@ -61,7 +61,7 @@ app.include_router(accounts_router)
 app.include_router(orders_router)
 app.include_router(dashboard_router)
 app.include_router(products_router, prefix="/api")  # prefix 확인
-app.include_router(shipments_router)
+app.include_router(shipments_router, prefix="/api")
 
 # === 정적 파일 서빙 ===
 if os.path.exists("static"):
