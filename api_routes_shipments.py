@@ -171,3 +171,29 @@ def adjust_shipment_stock(
     db.commit()
     
     return {"success": True, "new_quantity": shipment.remaining_quantity}
+
+@router.get("/shipments/{shipment_id}/price-history")
+def get_shipment_price_history(
+    shipment_id: int,
+    db: Session = Depends(get_db),
+    current: Account = Depends(get_current_account)
+):
+    """선적 가격 변동 이력 조회"""
+    history = db.query(ShipmentPriceHistory).filter(
+        ShipmentPriceHistory.shipment_id == shipment_id
+    ).order_by(ShipmentPriceHistory.created_at.desc()).all()
+    
+    return [...]
+
+@router.get("/shipments/{shipment_id}/stock-history")
+def get_shipment_stock_history(
+    shipment_id: int,
+    db: Session = Depends(get_db),
+    current: Account = Depends(get_current_account)
+):
+    """선적 재고 조정 이력 조회"""
+    adjustments = db.query(ShipmentStockAdjustments).filter(
+        ShipmentStockAdjustments.shipment_id == shipment_id
+    ).order_by(ShipmentStockAdjustments.created_at.desc()).all()
+    
+    return [...]

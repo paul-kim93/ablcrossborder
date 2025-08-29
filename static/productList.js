@@ -1819,7 +1819,11 @@ function displayShipmentsList(shipments) {
             <div style="margin-top: 5px;">
                 <button onclick="openShipmentPriceModal(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #007bff; color: white; border: none; border-radius: 3px;">가격수정</button>
                 <button onclick="openShipmentStockModal(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; margin-left: 5px;">재고조정</button>
-            </div>
+                <button onclick="viewPriceHistory(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #6c757d; color: white; border: none; border-radius: 3px; margin-left: 5px;">가격이력</button>
+                <button onclick="viewStockHistory(${ship.id})" style="font-size: 12px; padding: 3px 8px; background: #6c757d; color: white; border: none; border-radius: 3px; margin-left: 5px;">재고이력</button>
+                
+            
+                </div>
         </div>
     `).join('');
 }
@@ -2087,6 +2091,58 @@ function closeNewShipmentModal() {
     const modal = document.getElementById('newShipmentModal');
     if (modal) modal.remove();
 }
+
+// === 선적 이력 조회 함수 ===
+async function viewPriceHistory(shipmentId) {
+    try {
+        const response = await fetch(`/api/shipments/${shipmentId}/price-history`, {
+            headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
+        });
+        const history = await response.json();
+        
+        let html = `
+            <div style="padding: 20px; max-height: 60vh; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 8px; border: 1px solid #ddd;">변경일시</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">공급가</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">판매가</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">사유</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+        
+        history.forEach(item => {
+            html += `
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${new Date(item.created_at).toLocaleString('ko-KR')}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">$${item.supply_price}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">$${item.sale_price}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${item.reason || '-'}</td>
+                </tr>`;
+        });
+        
+        html += '</tbody></table></div>';
+        
+        window.openModal({
+            title: '가격 변동 이력',
+            bodyHTML: html,
+            footerHTML: '<button onclick="closeModal()">닫기</button>'
+        });
+    } catch (error) {
+        alert('이력 조회 실패');
+    }
+}
+
+async function viewStockHistory(shipmentId) {
+    // 유사한 구조로 재고 이력 표시
+}
+
+// 전역 등록
+window.viewPriceHistory = viewPriceHistory;
+window.viewStockHistory = viewStockHistory;
+
 
 window.openAddShipmentModalForEdit = openAddShipmentModalForEdit;
 window.saveNewShipmentDirect = saveNewShipmentDirect;
