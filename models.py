@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, ForeignKey, DateTime, Text, TIMESTAMP, Numeric, Date
+    Column, Integer, String, ForeignKey, DateTime, Text, TIMESTAMP, Numeric
 )
 from sqlalchemy.orm import relationship
     # NOTE: relationship은 필요한 곳만 설정
@@ -241,13 +241,13 @@ class ProductCodeMapping(Base):
 
 
 
-class ProductPriceHistory(Base):
-    __tablename__ = 'product_price_history'
-    
-    id = Column(Integer, primary_key=True)
-    product_id = Column(Integer, ForeignKey('products.id'))
-    supply_price = Column(DECIMAL(18, 2))
-    sale_price = Column(DECIMAL(18, 2))
-    effective_date = Column(Date)
-    change_by = Column(Integer, ForeignKey('accounts.id'))  # DB 컬럼명과 일치
-    created_at = Column(DateTime)
+#class ProductPriceHistory(Base):
+#    __tablename__ = 'product_price_history'
+#    
+#    id = Column(Integer, primary_key=True)
+#    product_id = Column(Integer, ForeignKey('products.id'))
+#    supply_price = Column(DECIMAL(18, 2))
+#    sale_price = Column(DECIMAL(18, 2))
+#    effective_date = Column(Date)
+#    change_by = Column(Integer, ForeignKey('accounts.id'))  # DB 컬럼명과 일치
+#    created_at = Column(DateTime)
